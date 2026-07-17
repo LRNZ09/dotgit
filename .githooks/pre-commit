@@ -1,0 +1,16 @@
+#!/bin/sh
+# Secret scan before every commit (gitleaks).
+# Blocks commits containing secrets or non-noreply email addresses.
+# Bypass in a pinch with: git commit --no-verify
+set -eu
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+	echo "✖ gitleaks not installed — 'brew install gitleaks' (or 'git commit --no-verify' to skip)." >&2
+	exit 1
+fi
+
+root=$(git rev-parse --show-toplevel)
+if ! gitleaks git --staged --no-banner --redact -v --config "$root/.gitleaks.toml"; then
+	echo "✖ gitleaks blocked this commit (findings above). Fix them, or 'git commit --no-verify' to override." >&2
+	exit 1
+fi

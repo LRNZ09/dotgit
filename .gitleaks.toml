@@ -1,0 +1,26 @@
+title = "dotgit secret-scanning config"
+
+# Start from gitleaks' built-in rules (API keys, tokens, private keys, ...).
+[extend]
+useDefault = true
+
+# Public repo: flag any committed email address so an identity can't leak again.
+[[rules]]
+id = "email-address"
+description = "Email address (keep identities out of this public repo)"
+regex = '''[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'''
+tags = ["identity", "pii", "email"]
+
+[allowlist]
+description = "Values that are safe to keep in this public repo"
+# GitHub noreply addresses are public by design — the one intentional exception.
+regexes = [
+  '''[a-zA-Z0-9._%+-]+@users\.noreply\.github\.com''',
+  # SSH remote URLs use the login "git@<host>" (github, bitbucket, gitlab, azure)
+  # — a transport login, not a personal identity.
+  '''\bgit@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}''',
+]
+# Template file holds only placeholder values.
+paths = [
+  '''config-work\.example''',
+]
