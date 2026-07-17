@@ -1,0 +1,5 @@
+# Copy to `config-work` (git-ignored) to set your per-directory work identity.
+# Loaded via the [includeIf "gitdir:~/Developer/work/"] rule in `config`.
+[user]
+	email = you@work.example
+	signingkey = YOUR_GPG_KEY_ID

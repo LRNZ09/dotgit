@@ -1,0 +1,107 @@
+# Core defaults and UI
+[advice]
+	skippedCherryPicks = false
+	mergeConflict = false
+
+[color]
+	ui = auto
+
+[column]
+	ui = auto
+
+[core]
+	editor = code --wait
+	excludesfile = ~/.gitignore
+
+[help]
+	autocorrect = prompt
+
+[init]
+	defaultBranch = main
+
+# Branching, history, and commit flow
+[branch]
+	sort = -committerdate
+	autoSetupMerge = simple
+
+[tag]
+	sort = version:refname
+	gpgSign = true
+
+[pull]
+	rebase = true
+
+[push]
+	autoSetupRemote = true
+	followTags = true
+
+[fetch]
+	prune = true
+	pruneTags = true
+	all = true
+
+[rebase]
+	autoStash = true
+	autoSquash = true
+	updateRefs = true
+	committerDateIsAuthorDate = true
+
+[rerere]
+	enabled = true
+	autoupdate = true
+
+[commit]
+	gpgsign = true
+	verbose = true
+
+[user]
+	email = 13508373+LRNZ09@users.noreply.github.com
+	name = Lorenzo Pieri
+
+# Diff and merge tooling
+[diff]
+	tool = default-difftool
+	algorithm = histogram
+	colorMoved = plain
+	mnemonicPrefix = true
+	renames = true
+
+[difftool "default-difftool"]
+	cmd = code --wait --diff $LOCAL $REMOTE
+
+[merge]
+	tool = default-mergetool
+
+[mergetool "default-mergetool"]
+	cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED
+	trustExitCode = false
+
+[diff "lockb"]
+	textconv = bun
+	binary = true
+
+# Credentials and host rewrites
+[credential]
+	gitLabAuthModes = pat
+	helper = /usr/local/bin/git-credential-manager
+	credentialStore = keychain
+
+[credential "https://dev.azure.com"]
+	useHttpPath = true
+
+[credential "https://bitbucket.org"]
+	provider = bitbucket
+
+[url "https://bitbucket.org/"]
+	insteadOf = ssh://git@bitbucket.org/
+
+[url "git+https://bitbucket.org/"]
+	insteadOf = git+ssh://git@bitbucket.org/
+
+[url "https://github.com/"]
+	insteadOf = git@github.com:
+	insteadOf = ssh://git@github.com/
+
+# Conditional includes
+[includeIf "gitdir:~/Developer/work/"]
+	path = config-work
