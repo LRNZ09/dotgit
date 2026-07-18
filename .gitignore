@@ -1,3 +1,4 @@
-# Per-machine work identity — kept out of this public repo.
-# See config-work.example for the template.
+# Per-machine identity — kept out of this public repo.
+# See the matching *.example files for templates.
+config-local
 config-work

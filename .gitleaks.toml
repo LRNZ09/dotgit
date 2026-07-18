@@ -20,7 +20,8 @@ regexes = [
   # — a transport login, not a personal identity.
   '''\bgit@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}''',
 ]
-# Template file holds only placeholder values.
+# Template files hold only placeholder values.
 paths = [
+  '''config-local\.example''',
   '''config-work\.example''',
 ]

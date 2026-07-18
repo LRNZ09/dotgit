@@ -1,0 +1,17 @@
+# Copy to `config-local` (git-ignored) to set your per-machine signing identity.
+# Loaded unconditionally via the [include] rule in `config`, so it applies
+# everywhere unless a later [includeIf] (e.g. config-work) overrides it.
+[user]
+	signingkey = YOUR_GPG_KEY_ID
+
+# Signing lives here too, so it's only enabled on machines that have a key.
+[commit]
+	gpgsign = true
+
+[tag]
+	gpgSign = true
+
+# Signing with SSH instead of GPG? Set the format and point signingkey at your
+# public key (or its path) above.
+# [gpg]
+# 	format = ssh

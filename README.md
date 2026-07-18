@@ -24,6 +24,12 @@ The hook needs [gitleaks](https://github.com/gitleaks/gitleaks): `brew install g
 
 ## Per-machine identity
 
-Work/per-directory identity lives in an untracked `config-work` (git-ignored),
-loaded via the `[includeIf]` rule in `config`. Copy `config-work.example` to
-`config-work` and fill in your details.
+Signing keys and identities differ per machine, so they live in untracked files
+(git-ignored) loaded via `include` rules in `config`. Git silently skips a
+missing include, so each machine only sets what it needs.
+
+- **Signing key** — copy `config-local.example` to `config-local` and set your
+  key. Loaded unconditionally, so it applies everywhere by default.
+- **Work/per-directory identity** — copy `config-work.example` to `config-work`
+  and fill in your details. Loaded via the `[includeIf "gitdir:…"]` rule, which
+  is applied after `config-local` and so overrides it inside work directories.

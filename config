@@ -26,7 +26,6 @@
 
 [tag]
 	sort = version:refname
-	gpgSign = true
 
 [pull]
 	rebase = true
@@ -51,7 +50,6 @@
 	autoupdate = true
 
 [commit]
-	gpgsign = true
 	verbose = true
 
 [user]
@@ -101,6 +99,10 @@
 [url "https://github.com/"]
 	insteadOf = git@github.com:
 	insteadOf = ssh://git@github.com/
+
+# Per-machine identity (signing key, etc.) — see config-local.example
+[include]
+	path = config-local
 
 # Conditional includes
 [includeIf "gitdir:~/Developer/work/"]
