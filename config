@@ -84,6 +84,17 @@
 	helper = /usr/local/bin/git-credential-manager
 	# credentialStore is OS-specific — see config-local
 
+# GitHub HTTPS auth via gh's token. `!gh` (not an absolute path) keeps this
+# portable — gh is on $PATH via Homebrew (macOS) and Linuxbrew. The empty
+# `helper` first clears the inherited GCM helper so gh wins for this host.
+[credential "https://github.com"]
+	helper =
+	helper = !gh auth git-credential
+
+[credential "https://gist.github.com"]
+	helper =
+	helper = !gh auth git-credential
+
 [credential "https://dev.azure.com"]
 	useHttpPath = true
 
