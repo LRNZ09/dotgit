@@ -82,7 +82,7 @@
 [credential]
 	gitLabAuthModes = pat
 	helper = /usr/local/bin/git-credential-manager
-	credentialStore = keychain
+	# credentialStore is OS-specific — see config-local
 
 [credential "https://dev.azure.com"]
 	useHttpPath = true

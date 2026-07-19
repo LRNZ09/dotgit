@@ -15,3 +15,8 @@
 # public key (or its path) above.
 # [gpg]
 # 	format = ssh
+
+# The credential store is OS-specific (the helper path is shared in config).
+[credential]
+	credentialStore = keychain
+	# Linux: credentialStore = secretservice   (or gpg / cache / plaintext)
