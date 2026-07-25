@@ -56,6 +56,14 @@
 	email = 13508373+LRNZ09@users.noreply.github.com
 	name = Lorenzo Pieri
 
+# Aliases
+# fixup <commit>: commit staged changes as a fixup for <commit>, then immediately
+# autosquash-rebase them in with no editor prompt. <commit> is resolved to a
+# SHA up front so relative refs (HEAD~3, a branch name, ...) still point at the
+# right commit after `git commit` moves HEAD.
+[alias]
+	fixup = "!f() { [ -z \"$1\" ] && { echo 'usage: git fixup <commit>' >&2; exit 1; }; hash=$(git rev-parse --verify \"$1^{commit}\") && git commit --fixup \"$hash\" && GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash \"$hash^\"; }; f"
+
 # Diff and merge tooling
 [diff]
 	tool = default-difftool
