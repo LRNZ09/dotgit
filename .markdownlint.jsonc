@@ -1,0 +1,20 @@
+// Prose in this repo wraps at 80 columns, and a hard tab in prose is an error.
+// Three exemptions, each for content that cannot be reflowed without damaging
+// it. Everything else stays enforced.
+{
+  "MD013": {
+    // Code blocks are verbatim. bin/install and bin/doctor are written from
+    // the fences in docs/superpowers/plans/, and the fisher bootstrap URL is
+    // exactly 80 characters, which leaves no room for a continuation.
+    "code_blocks": false,
+    // A markdown table row cannot wrap. The design document's measurement
+    // tables carry cells well past 80 characters.
+    "tables": false
+  },
+  "MD010": {
+    // Every hard tab is inside a code block: two POSIX sh scripts, and
+    // gitconfig snippets that have to match a file this repo indents with
+    // tabs throughout.
+    "code_blocks": false
+  }
+}

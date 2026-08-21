@@ -94,7 +94,8 @@ include directive — that is a real property of links and not of includes — b
 with zed out of scope, nothing currently linked needs it: git and fish are both
 CLI tools, and the one GUI app left is ghostty, which is handled by an include.
 So the live justification is narrower than the general one: zero configuration,
-and none of the five silent failure modes below. Directory links are structurally immune to
+and none of the five silent failure modes below. Directory links are
+structurally immune to
 temp-file-plus-rename, because `rename(2)` acts on the final path component and
 the kernel resolves the directory component first, so a tool's atomic write
 lands inside the repo working tree where `git status` shows it as an ordinary
@@ -206,7 +207,8 @@ Three properties follow, all measured:
   Linking the *config directory* has no effect on gitdir resolution.
 - **Tool writes become visible instead of silent.** `git config --global`,
   `gh auth setup-git` and `git-credential-manager configure` all write into the
-  **tracked** `git/config`, which shows up as ` M git/config`. The include
+  **tracked** `git/config`, which then shows up as a worktree modification.
+  The include
   design's ordering dilemma disappears with the second file: there is no longer
   a shadowing question, because there is only one global config. A machine that
   has drifted from the record now says so in `git status`.
@@ -403,6 +405,7 @@ salus/                          # ~/Developer/LRNZ09/salus, mode 700
 ├── lefthook.yml
 ├── .gitleaks.toml                  # already at the root — no merge needed
 ├── .gitignore
+├── .markdownlint.jsonc              # prose wraps at 80; code blocks stay verbatim
 └── .github/workflows/gitleaks.yml  # root only; GitHub reads workflows nowhere else
 ```
 
@@ -666,7 +669,8 @@ assumed:
   in, and it is worth stating plainly. `git restore` recovers the 6 tracked
   files. The other 91 entries are not in git at all: 82 come back with `fisher
   update`, which needs network, 5 come back only when `copilot`, `pipx`, `proto`
-  and fish itself next regenerate them, and 3 come back when OrbStack next runs. That is the price of tracking intent instead
+  and fish itself next regenerate them, and 3 come back when OrbStack next
+  runs. That is the price of tracking intent instead
   of artifacts, paid exactly once per accident, and the tarball covers it.
 - Genuinely unrecoverable by any git operation: `fish_variables`,
   `config-local`, `config-work` and `.remember/`. The last three exist nowhere
@@ -686,7 +690,7 @@ path this repo contains.
   `include.path` resolves against the link path, and `--show-origin` reports
   `file:$XDG_CONFIG_HOME/git/config-local`.
 - `git config --global --add` through the link landed in the tracked file, left
-  the link intact, and showed as ` M git/config`.
+  the link intact, and showed `git/config` as modified in the worktree.
 - `--unset` of a key in the tracked file returns **rc=0**; of a key in an
   included file, **rc=5**.
 - `includeIf "gitdir:"` through a linked config directory: work repo → work
@@ -941,7 +945,8 @@ Measured after all five: `abbr | count` 169, `functions | count` 108,
 `ANDROID_HOME` and `JAVA_HOME` still set, `.local/bin` still on `PATH`, proto
 still active. Behaviour on this machine is unchanged.
 
-`core.editor = code --wait` stays in the tracked config as the portable default —
+`core.editor = code --wait` stays in the tracked config as the portable
+default —
 it is a `PATH` lookup, not an absolute path — and a machine without VS Code
 overrides it in `config-local`, which is included last and therefore wins. The
 same applies to the `difftool`/`mergetool` commands.
@@ -996,8 +1001,12 @@ working, pushed checkout — which is what makes it the rollback.
 git clone https://github.com/LRNZ09/salus.git ~/Developer/LRNZ09/salus
 ```
 
-1. **`mkdir git` first**, then
-   `git mv config config-local.example config-work.example README.md .gitignore git/`.
+1. **`mkdir git` first**, then:
+
+   ```sh
+   git mv config config-local.example config-work.example README.md .gitignore git/
+   ```
+
    The `mkdir` is not optional and not cosmetic: measured, `git mv` with multiple
    sources fails outright on a destination that does not exist
    (`fatal: destination 'git/' is not a directory`), and the obvious per-file
@@ -1055,7 +1064,8 @@ git clone https://github.com/LRNZ09/salus.git ~/Developer/LRNZ09/salus
    | Application Support ghostty config | `ghostty/config.ghostty` |
 
    Copy the fish directory **whole**, all 97 entries as they stand after Phase 0.
-   The allow-list stages only the 6 hand-written ones, and the other 91 have to be present in the working
+   The allow-list stages only the 6 hand-written ones, and the other 91 have
+   to be present in the working
    tree regardless: after activation this directory *is* `~/.config/fish`, so
    fisher's files must physically live here for fish to work at all. Ignored and
    absent are different things. `cp -R` keeps the three OrbStack entries as
@@ -1269,7 +1279,8 @@ path. `~/.config/ghostty` does not exist, so the stub is simply written.
 
 The trees are near-identical, since the repo's copies were taken from them, with
 **one guaranteed conflict**: `fish/fish_plugins`. Phase 1 step 5 added the
-`.4` pin to `jhillyerd/plugin-git`; the machine's copy does not have it. The merge rule puts the machine's
+`.4` pin to `jhillyerd/plugin-git`; the machine's copy does not have it. The
+merge rule puts the machine's
 version in the working tree as an unstaged modification, so the pinning appears
 to be lost. It is not — resolve it the way the merge rule intends:
 
@@ -1381,7 +1392,8 @@ git -C ~/.config/git branch --unset-upstream            # see below
 `~/.gitignore` has to come back explicitly, and the tarball **cannot** supply it:
 that archive is rooted at `~/.config` and this file sits one level up. The
 restored `git/config` still points `core.excludesfile` at it, so skipping this
-line leaves that setting dangling and stops `.remember/` being ignored anywhere —
+line leaves that setting dangling and stops `.remember/` being ignored
+anywhere —
 the exposure Phase 1 step 2 exists to avoid. If `$BK` has already been discarded,
 recreate the file by copying `git/ignore` out of the repo.
 

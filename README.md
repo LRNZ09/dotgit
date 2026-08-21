@@ -16,8 +16,8 @@ The hook needs [gitleaks](https://github.com/gitleaks/gitleaks): `brew install g
 ## Secret scanning
 
 - **Pre-commit hook** (`.githooks/pre-commit`) runs gitleaks on staged changes and
-  blocks commits containing secrets or non-noreply email addresses. Override in a
-  pinch with `git commit --no-verify`.
+  blocks commits containing secrets or non-noreply email addresses.
+  Override in a pinch with `git commit --no-verify`.
 - **CI** (`.github/workflows/gitleaks.yml`) re-scans on every push/PR as a backstop
   that `--no-verify` can't bypass.
 - Rules live in `.gitleaks.toml`.
