@@ -1,0 +1,4 @@
+**/.claude/settings.local.json
+
+# Claude Code session buffer (may capture identities/paths) — never commit it
+.remember/

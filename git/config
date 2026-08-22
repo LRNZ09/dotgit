@@ -11,7 +11,6 @@
 
 [core]
 	editor = code --wait
-	excludesfile = ~/.gitignore
 
 [help]
 	autocorrect = prompt
