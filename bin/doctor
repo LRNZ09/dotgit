@@ -1,0 +1,180 @@
+#!/bin/sh
+# consus/bin/doctor — read-only. Exits 0 when this machine matches the record,
+# non-zero when it does not, and touches nothing either way.
+#
+# Link integrity is the one invariant git cannot express: the repo can be
+# pristine while $XDG_CONFIG_HOME points somewhere else, and for git and fish a
+# severed link is completely silent. That is what makes this script load-bearing
+# rather than a convenience. See the design document under docs/superpowers/.
+set -eu
+
+unset CDPATH
+repo=$(cd -- "$(dirname -- "$0")/.." && pwd -P)
+config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+fish_dir="$repo/fish"
+failed=0
+fish_link_ok=0
+
+present=$(mktemp); classified=$(mktemp); unclassified=$(mktemp)
+trap 'rm -f "$present" "$classified" "$unclassified"' EXIT
+
+echo "consus doctor"
+echo "  repo:        $repo"
+echo "  config home: $config_home"
+echo
+
+# --- the two links ----------------------------------------------------------
+# check_link <rel> — returns non-zero when the link is missing or wrong.
+check_link() {
+	c_target="$repo/$1"
+	c_path="$config_home/$1"
+	if [ ! -L "$c_path" ]; then
+		echo "✖ $c_path is not a symlink (expected -> $c_target)" >&2
+		return 1
+	fi
+	c_current=$(readlink -- "$c_path")
+	if [ "$c_current" != "$c_target" ]; then
+		echo "✖ $c_path -> $c_current (expected -> $c_target)" >&2
+		return 1
+	fi
+	echo "✓ link       $c_path -> $c_target"
+}
+
+check_link git || failed=1
+if check_link fish; then fish_link_ok=1; else failed=1; fi
+
+# --- the ghostty include ----------------------------------------------------
+# The stub assertion is not redundant: +validate-config exits 1 when the stub
+# names a missing target, but 0 when the stub is absent altogether — ghostty
+# falls back to Application Support and reports success.
+stub="$config_home/ghostty/config.ghostty"
+want="config-file = $repo/ghostty/config.ghostty"
+if [ ! -f "$stub" ]; then
+	echo "✖ $stub is missing — ghostty falls back to Application Support in silence" >&2
+	failed=1
+elif [ "$(cat -- "$stub")" != "$want" ]; then
+	echo "✖ $stub does not name this clone; expected exactly:" >&2
+	echo "    $want" >&2
+	failed=1
+else
+	echo "✓ stub       $stub"
+	if command -v ghostty >/dev/null 2>&1; then
+		if ghostty +validate-config >/dev/null 2>&1; then
+			echo "✓ ghostty    +validate-config exits 0"
+		else
+			echo "✖ ghostty +validate-config failed — run it directly for the reason" >&2
+			failed=1
+		fi
+	else
+		echo "· ghostty    not installed — skipped +validate-config"
+	fi
+fi
+
+# --- fish: the declaration, then the unclassified report ---------------------
+# Gated on the link, and not merely for tidiness: fish CREATES
+# $XDG_CONFIG_HOME/fish when it is missing, so querying fisher through a severed
+# link would plant a real directory where the link belongs — turning install's
+# silent relink into a prompt on the next run. Measured.
+if [ "$fish_link_ok" -eq 0 ]; then
+	echo "· fish       skipped — $config_home/fish is not the expected link, and"
+	echo "·            starting fish would create a real directory there."
+elif ! command -v fish >/dev/null 2>&1; then
+	echo "· fish       not installed — skipped the plugin checks"
+else
+	# `fish -c` is safe here: measured, reading a universal variable leaves
+	# fish_variables untouched. conf.d noise goes to stderr, hence 2>/dev/null.
+	installed=$(fish -c 'string join \n -- $_fisher_plugins' 2>/dev/null || true)
+	if [ -z "$installed" ]; then
+		echo "· fisher     never ran here (_fisher_plugins is unset) — skipped the plugin"
+		echo "·            checks. A fresh clone has fish_plugins and no fisher, because"
+		echo "·            fisher's own files are among the ignored ones. Bootstrap it:"
+		echo "·              curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source"
+		echo "·              fisher install jorgebucaran/fisher"
+		echo "·              fisher update"
+	else
+		# Declared-but-not-installed. Pins are stripped from both sides: the
+		# declaration carries pins the installed record does not, and this check
+		# is about a plugin being present, not about which tag it came from.
+		missing=0
+		while IFS= read -r declared; do
+			[ -n "$declared" ] || continue
+			if ! printf '%s\n' "$installed" | sed 's|@.*||' | grep -qxF "${declared%%@*}"; then
+				echo "✖ declared but not installed: $declared" >&2
+				missing=$((missing + 1))
+			fi
+		done < "$fish_dir/fish_plugins"
+		if [ "$missing" -ne 0 ]; then
+			echo "✖ declared but not installed: $missing — run: fisher update (needs network)" >&2
+			failed=1
+		else
+			echo "✓ plugins    every plugin in fish/fish_plugins is installed"
+		fi
+
+		# Unclassified entries. The allow-list hides a new hand-written file from
+		# `git status` entirely — measured, not even as untracked — so this
+		# report is the only way it becomes visible. Advisory: never fails.
+		( cd -- "$fish_dir" && find . -name .git -prune -o ! -type d -print ) |
+			sed 's|^\./||' | sort > "$present"
+		{
+			git -C "$repo" ls-files fish | sed 's|^fish/||'
+			# Fisher records its paths with a literal ~/.config/fish/ prefix, so
+			# strip that (and the real forms) or nothing ever matches.
+			fish -c 'for v in (set --names | string match "_fisher_*_files"); string join \n -- $$v; end' 2>/dev/null |
+				sed "s|^~/\\.config/fish/||; s|^$HOME/\\.config/fish/||; s|^$fish_dir/||"
+			printf '%s\n' \
+				completions/copilot.fish \
+				completions/pipx.fish \
+				completions/proto.fish \
+				conf.d/fish_frozen_key_bindings.fish \
+				conf.d/fish_frozen_theme.fish \
+				fish_variables
+			# OrbStack's completions are symlinks into /Applications/OrbStack.app.
+			# Matched by target rather than by name, so a fourth one does not
+			# report as unclassified forever.
+			while IFS= read -r entry; do
+				if [ -L "$fish_dir/$entry" ]; then
+					case "$(readlink -- "$fish_dir/$entry")" in
+					*OrbStack.app*) printf '%s\n' "$entry" ;;
+					esac
+				fi
+			done < "$present"
+		} | sort -u > "$classified"
+
+		comm -23 "$present" "$classified" > "$unclassified"
+		count=$(wc -l < "$unclassified" | tr -d ' ')
+		if [ "$count" -eq 0 ]; then
+			echo "✓ fish       every entry under fish/ is accounted for"
+		else
+			echo "· fish       $count unclassified under fish/ — hand-written and hidden by"
+			echo "·            the allow-list, or output from a tool nobody classified:"
+			sed 's|^|·              |' "$unclassified"
+			echo "·            Add a .gitignore negation for anything that belongs in the"
+			echo "·            record. Advisory — this never fails the run."
+		fi
+	fi
+fi
+
+
+# --- the review queue -------------------------------------------------------
+# Advisory, like the unclassified report, and deliberately not a failure. The
+# tools read the working tree, so the machine and the working tree agree by
+# construction; what a dirty tree means is that the *committed* record has not
+# caught up, and the design wants that difference visible in `git status` rather
+# than hidden. It is reported here so an unattended log carries it, and the
+# migration tasks gate on it themselves before pushing.
+queue=$(git -C "$repo" status --porcelain 2>/dev/null || true)
+if [ -n "$queue" ]; then
+	echo "· tree       uncommitted changes — the review queue:"
+	printf '%s\n' "$queue" | sed 's|^|·              |'
+	echo "·            git restore <path> if the record was right, git commit if the"
+	echo "·            machine was. Advisory — this never fails the run."
+else
+	echo "✓ tree       clean — the committed record matches this machine"
+fi
+
+echo
+if [ "$failed" -ne 0 ]; then
+	echo "✖ doctor: findings above" >&2
+	exit 1
+fi
+echo "✓ doctor: this machine matches the record"
