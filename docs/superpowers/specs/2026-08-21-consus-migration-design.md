@@ -1,4 +1,4 @@
-# salus — design and migration plan
+# consus — design and migration plan
 
 **Date:** 2026-08-21
 **Status:** design settled, not yet executed
@@ -6,14 +6,14 @@
 tool through its own configuration language. Measurement retired that choice —
 see "Options considered" and "Verified facts".
 **Prerequisite for:** the `fides` machine record, whose `satellites` role cannot
-run until `salus` exists and is pushed. That spec
+run until `consus` exists and is pushed. That spec
 (`docs/superpowers/specs/2026-08-20-fides-design.md` in `LRNZ09/fides`) still
 describes a superseded layout — see "What this repo guarantees a provisioner".
 
 ## What this does
 
-Renames `LRNZ09/dotgit` to `LRNZ09/salus` and relocates its checkout to
-`~/Developer/LRNZ09/salus`, where it becomes an ordinary browsable repo in
+Renames `LRNZ09/dotgit` to `LRNZ09/consus` and relocates its checkout to
+`~/Developer/LRNZ09/consus`, where it becomes an ordinary browsable repo in
 the same directory as `vesta` and `fides`. Five of its tracked files — `config`,
 both `.example` files, `README.md` and `.gitignore` — move into a `git/`
 subdirectory by `git mv`; `.gitleaks.toml`, the gitleaks workflow and `docs/`
@@ -24,19 +24,26 @@ purpose — they grow every time this document is committed, and Phase 2 asserts
 against a baseline recorded in Phase 0 instead.) GitHub redirects the old URL,
 so no clone or remote anywhere breaks.
 
-The name follows the family convention, where the deity's domain matches the
+The name follows the family convention, where the name's domain matches the
 repo's function: `vesta` the hearth for the homelab interior, `janus` the
-doorway for its gateway, `fides` good faith for the machine record. Salus is
-health, safety and welfare — this repo ships the machine's health check in
-`bin/doctor`, and its central property is safety by construction: no credential
-can enter the working tree, nothing is ever deleted, and every move reverses.
+doorway for its gateway, `fides` good faith for the machine record. A consus
+is the one member of that family that is not a deity but the fixture the deities
+stand in — the shrine niche built into the wall of every Roman house, holding
+the gods of that particular household. That is what this repo is: not the
+configuration itself but the niche that holds it and puts it where each tool
+already looks. Every house had one, the contents were much the same house to
+house, and a family moving in installed theirs and the place became home.
+Installing it twice changes nothing, which is the claim `bin/install` makes.
+
+The repo's central property is safety by construction: no credential can enter
+the working tree, nothing is ever deleted, and every move reverses.
 
 `~/.config` never becomes a repo and holds no `.git`. Each tool finds its
 configuration at its **own default path**, which is a symlink into the repo:
 
 ```text
-~/.config/git   →  ~/Developer/LRNZ09/salus/git
-~/.config/fish  →  ~/Developer/LRNZ09/salus/fish
+~/.config/git   →  ~/Developer/LRNZ09/consus/git
+~/.config/fish  →  ~/Developer/LRNZ09/consus/fish
 ```
 
 One tool is the exception. Ghostty's winning config path on macOS is
@@ -164,7 +171,7 @@ the entire directory including the ignored credential stores.** Reproduced
 twice. The deny-by-default gitignore is what makes it possible — it renders
 `git status` empty, so git considers the worktree disposable.
 
-**A repo of outward-pointing symlinks** — `salus/fish` pointing at
+**A repo of outward-pointing symlinks** — `consus/fish` pointing at
 `~/.config/fish`. Not merely worse; it versions nothing. git stores a
 mode-120000 blob whose entire content is the target path string: the whole
 `fish` tree behind one link produced 5 blobs and zero tracked configuration.
@@ -192,7 +199,7 @@ Measured against git 2.55.0, fish 4.8.0, ghostty 1.3.1 and gh 2.96.0.
 ### git — a directory link and nothing else
 
 No stub, no `[include]` line, no configuration of any kind. `~/.config/git`
-becomes a link to `salus/git` and git reads `salus/git/config` as the
+becomes a link to `consus/git` and git reads `consus/git/config` as the
 global config file, because that is what the path resolves to.
 
 Three properties follow, all measured:
@@ -219,7 +226,7 @@ still return rc=5, and those are the two files nothing should be unsetting
 programmatically.
 
 The machine-local identity files live **inside the repo** at
-`salus/git/config-local` and `config-work`, untracked. `dotgit`'s own
+`consus/git/config-local` and `config-work`, untracked. `dotgit`'s own
 `.gitignore` already lists `config-local` and `config-work` with unanchored
 patterns, so it keeps working verbatim once it becomes `git/.gitignore`, and the
 `.gitleaks.toml` email rule blocks either from being committed.
@@ -241,7 +248,7 @@ to get there is harmless.
 
 ### fish — a directory link, and the stub disappears
 
-`~/.config/fish` becomes a link to `salus/fish`. Measured: **169
+`~/.config/fish` becomes a link to `consus/fish`. Measured: **169
 abbreviations and 109 functions, exact parity with the pre-migration baseline,
 with no stub file and no `set -g fisher_path` line.** `$__fish_config_dir`
 resolves to `~/.config/fish`, which *is* the repo, so every mechanism fish has
@@ -330,7 +337,7 @@ accounting below.
 `~/.config/ghostty/config.ghostty`, written by `bin/install`:
 
 ```text
-config-file = /Users/<you>/Developer/LRNZ09/salus/ghostty/config.ghostty
+config-file = /Users/<you>/Developer/LRNZ09/consus/ghostty/config.ghostty
 ```
 
 Ghostty is the exception because its winning path is outside `~/.config`
@@ -388,11 +395,11 @@ link needs no `sudo`. It is dropped for having nothing worth tracking.
 ## Repo layout
 
 ```text
-salus/                          # ~/Developer/LRNZ09/salus, mode 700
+consus/                          # ~/Developer/LRNZ09/consus, mode 700
 ├── README.md                       # everything needed to act; see below
 ├── bin/install                     # links, the ghostty stub, lefthook install, chmod
 ├── bin/doctor                      # read-only; readlink targets + ghostty validate
-├── docs/superpowers/specs/…-salus-migration-design.md   # this file
+├── docs/superpowers/specs/…-consus-migration-design.md   # this file
 ├── git/                            # 5 of the 8 dotgit files, git mv'd — history kept
 │   ├── config
 │   ├── config-local.example
@@ -481,7 +488,7 @@ For each path where a link belongs it does one of five things:
 
 **`bin/install` never deletes anything.** Every displaced path is *moved* to a
 backup directory and every move is reversible by moving it back. Backups go to
-`~/Backups/salus-install-<timestamp>/`, overridable with `--backup-dir`, and
+`~/Backups/consus-install-<timestamp>/`, overridable with `--backup-dir`, and
 deliberately **not** to a `<path>.bak` sibling inside `~/.config`: that would be
 clutter in a namespace every tool enumerates, and it would leave something you
 have to delete recursively later. The timestamp means a second run can never
@@ -885,8 +892,8 @@ URL needs fixing afterwards, and nothing relies on GitHub's redirect. It is
 reversible with `gh repo rename dotgit`, and GitHub redirects both directions.
 
 ```sh
-gh repo rename salus -R LRNZ09/dotgit
-git -C ~/.config/git remote set-url origin https://github.com/LRNZ09/salus.git
+gh repo rename consus -R LRNZ09/dotgit
+git -C ~/.config/git remote set-url origin https://github.com/LRNZ09/consus.git
 ```
 
 Then commit this document and push. It travels into the clone as history rather
@@ -998,7 +1005,7 @@ Nothing happens inside `~/.config/git` in this phase. It stays a complete,
 working, pushed checkout — which is what makes it the rollback.
 
 ```sh
-git clone https://github.com/LRNZ09/salus.git ~/Developer/LRNZ09/salus
+git clone https://github.com/LRNZ09/consus.git ~/Developer/LRNZ09/consus
 ```
 
 1. **`mkdir git` first**, then:
@@ -1122,7 +1129,7 @@ there is a conflict, so it has to be exercised against drift that is real rather
 than imagined:
 
 ```sh
-R=~/Backups/salus-rehearsal-$(date +%Y%m%dT%H%M%S); mkdir -p "$R/xdg"
+R=~/Backups/consus-rehearsal-$(date +%Y%m%dT%H%M%S); mkdir -p "$R/xdg"
 cp -R ~/.config/fish "$R/xdg/fish"
 cp -R ~/.config/git  "$R/xdg/git"          # includes .git — the diff must exclude it
 
@@ -1240,7 +1247,7 @@ this is the only copy that exists anywhere.
 
 The migration backup that `bin/install` writes is a different thing and carries
 no credentials at all: `config-local`, `config-work` and `.remember/` are moved
-into the repo before install runs, so what lands in `~/Backups/salus-migration-*`
+into the repo before install runs, so what lands in `~/Backups/consus-migration-*`
 is the old checkout's tracked-and-pushed content plus its `.git`. Only the
 tarball needs treating as sensitive.
 
@@ -1251,12 +1258,12 @@ home first, while `~/.config/git` is still live, and then one `bin/install` run
 covers all three remaining paths:
 
 ```sh
-BK=~/Backups/salus-migration-$(date +%Y%m%dT%H%M%S)   # capture it; rollback needs it
+BK=~/Backups/consus-migration-$(date +%Y%m%dT%H%M%S)   # capture it; rollback needs it
 mkdir -p "$BK"
-mv ~/.config/git/config-local ~/.config/git/config-work ~/Developer/LRNZ09/salus/git/
-mv ~/.config/git/.remember ~/Developer/LRNZ09/salus/git/
+mv ~/.config/git/config-local ~/.config/git/config-work ~/Developer/LRNZ09/consus/git/
+mv ~/.config/git/.remember ~/Developer/LRNZ09/consus/git/
 mv ~/.gitignore "$BK"/gitignore-home        # now redundant: tracked as git/ignore
-cd ~/Developer/LRNZ09/salus
+cd ~/Developer/LRNZ09/consus
 ./bin/install --backup-dir "$BK"
 echo "$BK"   # write it down — every rollback path starts here
 ```
@@ -1315,8 +1322,8 @@ checks fail by design:
 
 ```sh
 ./bin/doctor                                           # exits 0
-git -C ~/Developer/LRNZ09/salus status --porcelain # empty
-git -C ~/Developer/LRNZ09/salus log @{u}..         # exits 0, no output
+git -C ~/Developer/LRNZ09/consus status --porcelain # empty
+git -C ~/Developer/LRNZ09/consus log @{u}..         # exits 0, no output
 git config --list --show-origin | grep -E 'user\.|include'   # NOT --global --list
 git config --show-origin --get user.signingkey         # resolves inside the repo
 git -C ~/Developer/work/<any> config --get user.email  # the work identity
@@ -1344,7 +1351,7 @@ that walks up from an unlinked tool's config directory finds one.
 - No archive step. The repo was renamed, so there is no second repo to retire.
 - Correct the `reference-git-signing-setup` memory, which states that
   `~/.config/git/` is its own repository. Under this design it is a symlink into
-  `salus`.
+  `consus`.
 - Add to the restore checklist: `gh config set git_protocol https` and the `co`
   alias; the three-line fisher bootstrap under "What is tracked" — `curl | source`,
   `fisher install jorgebucaran/fisher`, `fisher update` — since fisher itself is
@@ -1378,14 +1385,14 @@ straight through them into the repo working tree.** Moving a link moves the link
 itself and never touches its target, measured.
 
 ```sh
-B=~/Backups/salus-rollback-$(date +%Y%m%dT%H%M%S); mkdir -p "$B"
+B=~/Backups/consus-rollback-$(date +%Y%m%dT%H%M%S); mkdir -p "$B"
 mv ~/.config/git ~/.config/fish "$B"/
 mv ~/.config/ghostty/config.ghostty "$B"/
 
 mv "$BK"/git "$BK"/fish ~/.config/                     # $BK from Phase 3
 mv "$BK"/gitignore-home ~/.gitignore                   # core.excludesfile target
-mv ~/Developer/LRNZ09/salus/git/config-local ~/Developer/LRNZ09/salus/git/config-work ~/.config/git/
-mv ~/Developer/LRNZ09/salus/git/.remember ~/.config/git/
+mv ~/Developer/LRNZ09/consus/git/config-local ~/Developer/LRNZ09/consus/git/config-work ~/.config/git/
+mv ~/Developer/LRNZ09/consus/git/.remember ~/.config/git/
 git -C ~/.config/git branch --unset-upstream            # see below
 ```
 
@@ -1404,7 +1411,7 @@ would redo the migration underneath you. Unsetting the upstream (or removing the
 remote outright) stops that. Making it a normal tracking clone again means
 reverting the restructure commits on origin first.
 
-If `fides` has been given a `salus` satellite entry by then, disable it
+If `fides` has been given a `consus` satellite entry by then, disable it
 before rolling back, or its `./bin/install --non-interactive` will recreate the
 links on the next run.
 
@@ -1438,13 +1445,13 @@ only to serve another repo:
   ahead.
 - **The satellite is a plain clone at a real path.** No graft, no `git init` over
   an existing directory, no bare repo: `git clone` to
-  `~/Developer/LRNZ09/salus`, then two symlinks and one stub created by
+  `~/Developer/LRNZ09/consus`, then two symlinks and one stub created by
   `bin/install`.
 
 That last point is where `fides`' current spec diverges most, and the divergence
 is deeper than a list of edits. Its architecture describes satellites "cloned to
-their real paths with no symlink layer", a `salus → ~/.config` graft, and
-"adding a newly-configured tool is a gitignore line in `salus`". This design
+their real paths with no symlink layer", a `consus → ~/.config` graft, and
+"adding a newly-configured tool is a gitignore line in `consus`". This design
 replaced all three: the satellite lives outside `~/.config`, the symlink layer is
 the mechanism rather than something avoided, and adding a tool is a directory plus
 an allow-list negation plus a link. Those sections need **rewriting against the
