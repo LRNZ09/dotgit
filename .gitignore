@@ -1,0 +1,25 @@
+.DS_Store
+
+# .remember/ follows the link into the tree. Every annotation in this file sits
+# on its own line: gitignore honours # only at the start of a line, so a
+# trailing comment becomes part of the pattern and silently disables it.
+/git/.remember/
+
+# fish: the record is what I wrote. Tools generated the other 91 entries —
+# fisher owns 82, fish_plugins is the declaration behind those, five are
+# tool-generated and three are OrbStack completion symlinks.
+#
+# The two directory re-includes must stay below /fish/*: a file cannot be
+# re-included once a parent directory is excluded. Measured — hoisted above it,
+# only config.fish and fish_plugins stage, and the other four vanish silently.
+/fish/*
+!/fish/config.fish
+!/fish/fish_plugins
+!/fish/conf.d/
+!/fish/functions/
+/fish/conf.d/*
+!/fish/conf.d/android.fish
+!/fish/conf.d/proto.fish
+!/fish/conf.d/rustup.fish
+/fish/functions/*
+!/fish/functions/gfu.fish

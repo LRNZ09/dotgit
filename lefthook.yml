@@ -1,0 +1,8 @@
+assert_lefthook_installed: true
+pre-commit:
+  parallel: true
+  commands:
+    gitleaks:
+      run: |
+        command -v gitleaks >/dev/null || { echo "✖ gitleaks not installed — brew install gitleaks"; exit 1; }
+        gitleaks git --staged --no-banner --redact -v --config .gitleaks.toml
