@@ -1,0 +1,531 @@
+#!/bin/sh
+# consus/bin/install — point each tool's own default path at this clone.
+#
+#   $XDG_CONFIG_HOME/fish                    -> <repo>/fish   (symlink)
+#   $XDG_CONFIG_HOME/ghostty/config.ghostty                   (one-line include)
+#   $XDG_CONFIG_HOME/git                     -> <repo>/git    (symlink, last)
+#
+# Nothing is ever deleted: every displaced path is MOVED into a timestamped
+# backup directory, and every move reverses by moving it back. Re-running is a
+# no-op.
+#
+# The run is all-or-nothing. Every path is classified and every decision settled
+# BEFORE anything moves, so a run that cannot finish changes nothing at all
+# rather than leaving a half-linked machine behind.
+#
+# A real directory or file in the way needs a decision. It can be typed at the
+# prompt, or declared up front with --resolve <path>=<action>. With neither, and
+# no TTY, install prints the diff, prints a digest of it, and refuses — so
+# automation that has not been told what to do cannot decide on its own.
+#
+# --resolve <path>=merge additionally REQUIRES --expect-diff <path>=<digest>,
+# the digest install printed for the diff you reviewed. Merge is the only action
+# that writes machine content into this repo's working tree, and the digest is
+# what ties that write to a diff somebody actually looked at. It also means a
+# provisioner cannot carry a durable "always merge" instruction: the digest goes
+# stale the moment the machine drifts, and a stale digest refuses.
+#
+# Usage: bin/install [--non-interactive] [--backup-dir DIR]
+#                    [--resolve <fish|git>=<overwrite|merge|refuse>]...
+#                    [--expect-diff <fish|git>=<digest>]...
+# Why links rather than tool-native includes: the design document under docs/.
+set -eu
+
+# The only two paths that can ever need a decision. The ghostty stub is
+# install's own output rather than machine content, so it is backed up and
+# rewritten without asking.
+KNOWN_PATHS='fish git'
+
+usage() {
+	echo "usage: bin/install [--non-interactive] [--backup-dir DIR]" >&2
+	echo "                   [--resolve <fish|git>=<overwrite|merge|refuse>]..." >&2
+	echo "                   [--expect-diff <fish|git>=<digest>]..." >&2
+	exit 2
+}
+
+non_interactive=0
+backup_dir=''
+resolutions=''
+expectations=''
+
+# known_path <path> — is this one of the paths that can take a decision?
+known_path() {
+	case " $KNOWN_PATHS " in
+	*" $1 "*) return 0 ;;
+	esac
+	return 1
+}
+
+# already_keyed <list> <path> — the value already recorded for <path>, if any.
+already_keyed() {
+	for k_pair in $1; do
+		case "$k_pair" in
+		"$2"=*) printf '%s' "${k_pair#*=}"; return 0 ;;
+		esac
+	done
+	return 0
+}
+
+# add_resolution <path>=<action>, add_expectation <path>=<digest> — both
+# validated here rather than at the point of use, so a typo fails loudly and
+# immediately instead of turning into a silent refusal an hour later.
+add_resolution() {
+	case "$1" in
+	*=*) ;;
+	*) echo "install: --resolve needs <path>=<action>, got: $1" >&2; usage ;;
+	esac
+	a_rel=${1%%=*}
+	a_action=${1#*=}
+	known_path "$a_rel" || {
+		echo "install: --resolve: unknown path '$a_rel' (expected one of: $KNOWN_PATHS)" >&2
+		usage
+	}
+	case "$a_action" in
+	overwrite | merge | refuse) ;;
+	*)
+		echo "install: --resolve $a_rel: unknown action '$a_action' (expected overwrite, merge or refuse)" >&2
+		usage
+		;;
+	esac
+	# merge copies the machine tree over the repo's, which for the git path
+	# would drag the old checkout's whole .git into this repo as a nested
+	# repository git status never reports. Only fish has merge semantics.
+	if [ "$a_action" = merge ] && [ "$a_rel" != fish ]; then
+		echo "install: --resolve $a_rel=merge: merge is only defined for fish" >&2
+		echo "  the git path takes overwrite or refuse" >&2
+		usage
+	fi
+	a_prev=$(already_keyed "$resolutions" "$a_rel")
+	if [ -n "$a_prev" ] && [ "$a_prev" != "$a_action" ]; then
+		echo "install: --resolve $a_rel: given twice ($a_prev, $a_action) — pick one" >&2
+		usage
+	fi
+	resolutions="$resolutions $a_rel=$a_action"
+}
+
+add_expectation() {
+	case "$1" in
+	*=*) ;;
+	*) echo "install: --expect-diff needs <path>=<digest>, got: $1" >&2; usage ;;
+	esac
+	e_rel=${1%%=*}
+	e_digest=${1#*=}
+	known_path "$e_rel" || {
+		echo "install: --expect-diff: unknown path '$e_rel' (expected one of: $KNOWN_PATHS)" >&2
+		usage
+	}
+	case "$e_digest" in
+	*[!0-9a-f]*)
+		echo "install: --expect-diff $e_rel: '$e_digest' is not a digest install printed" >&2
+		usage
+		;;
+	esac
+	if [ "${#e_digest}" -ne 12 ]; then
+		echo "install: --expect-diff $e_rel: digests are 12 hex characters, got ${#e_digest}" >&2
+		usage
+	fi
+	e_prev=$(already_keyed "$expectations" "$e_rel")
+	if [ -n "$e_prev" ] && [ "$e_prev" != "$e_digest" ]; then
+		echo "install: --expect-diff $e_rel: given twice ($e_prev, $e_digest) — pick one" >&2
+		usage
+	fi
+	expectations="$expectations $e_rel=$e_digest"
+}
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+	--non-interactive) non_interactive=1 ;;
+	--backup-dir) [ $# -ge 2 ] || usage; backup_dir="$2"; shift ;;
+	--backup-dir=*) backup_dir="${1#--backup-dir=}" ;;
+	--resolve) [ $# -ge 2 ] || usage; add_resolution "$2"; shift ;;
+	--resolve=*) add_resolution "${1#--resolve=}" ;;
+	--expect-diff) [ $# -ge 2 ] || usage; add_expectation "$2"; shift ;;
+	--expect-diff=*) add_expectation "${1#--expect-diff=}" ;;
+	-h | --help) usage ;;
+	*) echo "install: unknown argument: $1" >&2; usage ;;
+	esac
+	shift
+done
+
+# The repo path comes from this script's own location, so any clone path works.
+# CDPATH is cleared because it can make a relative `cd` land somewhere else.
+unset CDPATH
+repo=$(cd -- "$(dirname -- "$0")/.." && pwd -P)
+config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+[ -n "$backup_dir" ] || backup_dir="$HOME/Backups/consus-install-$(date +%Y%m%dT%H%M%S)"
+
+# lefthook backs the repo's own secret scanning. Checked up front so a missing
+# tool cannot leave a half-linked machine behind.
+if ! command -v lefthook >/dev/null 2>&1; then
+	echo "✖ lefthook is not installed — run: brew install lefthook" >&2
+	exit 1
+fi
+
+# Scratch files for the diff. These are the script's own temporaries; the
+# never-delete rule is about machine paths, not about /tmp.
+d_machine=$(mktemp); d_repo=$(mktemp); d_ignored=$(mktemp)
+d_scratch=$(mktemp); d_only_m=$(mktemp); d_only_r=$(mktemp); d_both=$(mktemp)
+d_listing=$(mktemp)
+trap 'rm -f "$d_machine" "$d_repo" "$d_ignored" "$d_scratch" "$d_only_m" "$d_only_r" "$d_both" "$d_listing"' EXIT
+
+# entries <dir> — every non-directory entry relative to <dir>, symlinks
+# included (which -type f would miss), with any .git pruned.
+entries() {
+	( cd -- "$1" && find . -name .git -prune -o ! -type d -print ) | sed 's|^\./||' | sort
+}
+
+# show_diff <rel> <machine-path> — what differs between the machine's tree and
+# the repo's, skipping .git/ and everything the repo ignores. Without the ignore
+# filter, ~/.config/git alone drowns the output in its old object store.
+#
+# Sets diff_digest to a digest of the listing itself — of the very lines printed
+# below, so what the digest commits to is what a reader reviewed. Paths are
+# relative, so the digest is stable across clone locations.
+show_diff() {
+	d_rel="$1"
+	d_m="$2"
+	d_r="$repo/$1"
+
+	entries "$d_m" > "$d_machine"
+	entries "$d_r" > "$d_repo"
+
+	# check-ignore refuses paths outside the repository, so ask it from inside
+	# the repo with repo-relative paths, then strip the prefix back off.
+	sort -u "$d_machine" "$d_repo" | sed "s|^|$d_rel/|" > "$d_scratch"
+	( cd -- "$repo" && git check-ignore --stdin < "$d_scratch" ) 2>/dev/null |
+		sed "s|^$d_rel/||" | sort > "$d_ignored" || true
+
+	comm -23 "$d_machine" "$d_ignored" > "$d_scratch"; cp -- "$d_scratch" "$d_machine"
+	comm -23 "$d_repo" "$d_ignored" > "$d_scratch"; cp -- "$d_scratch" "$d_repo"
+
+	comm -23 "$d_machine" "$d_repo" > "$d_only_m"
+	comm -13 "$d_machine" "$d_repo" > "$d_only_r"
+	comm -12 "$d_machine" "$d_repo" > "$d_both"
+
+	: > "$d_listing"
+	while IFS= read -r d_entry; do
+		[ -n "$d_entry" ] || continue
+		if ! cmp -s -- "$d_m/$d_entry" "$d_r/$d_entry" 2>/dev/null; then
+			echo "  differ:          $d_entry" >> "$d_listing"
+			# The digest has to commit to content, not only to the name: a
+			# `differ:` line reads the same whatever the file now holds, so a
+			# name-only digest would go stale when a new file appears but not
+			# when an already-differing file is edited again.
+			printf '    machine %s  repo %s\n' \
+				"$(shasum -a 256 -- "$d_m/$d_entry" 2>/dev/null | cut -c1-12)" \
+				"$(shasum -a 256 -- "$d_r/$d_entry" 2>/dev/null | cut -c1-12)" \
+				>> "$d_listing"
+		fi
+	done < "$d_both"
+	sed '/^$/d; s|^|  only on machine: |' "$d_only_m" >> "$d_listing"
+	sed '/^$/d; s|^|  only in repo:    |' "$d_only_r" >> "$d_listing"
+
+	diff_digest=$(shasum -a 256 < "$d_listing" | cut -c1-12)
+
+	echo "  --- $d_m  vs  $d_r   (.git/ and ignored files excluded) ---"
+	cat -- "$d_listing"
+	echo "  --- end of diff, digest $d_rel=$diff_digest ---"
+}
+
+# ---------------------------------------------------------------------------
+# Plan. Classify every path and settle every decision before anything moves.
+# ---------------------------------------------------------------------------
+plan_fish=''; plan_git=''; plan_stub=''
+slot_fish=0; slot_git=0; slot_stub=0
+unresolved=0
+declared_merge=0
+
+# classify <rel> — sets plan_result to one of ok / link / relink / overwrite /
+# merge / refuse, and slot_result to 1 when the path will be moved into the
+# backup directory.
+classify() {
+	c_rel="$1"
+	c_target="$repo/$1"
+	c_path="$config_home/$1"
+	plan_result=''
+	slot_result=0
+
+	# Never link to something that is not in this clone: without this, a
+	# missing $repo/git would send the live global config to the backup and
+	# leave a dangling link in its place, with git silently unconfigured.
+	if [ ! -d "$c_target" ]; then
+		echo "✖ $c_rel: the record is missing — $c_target is not in this clone" >&2
+		unresolved=$((unresolved + 1))
+		plan_result=refuse
+		return 0
+	fi
+	# A partial diff is worse than no diff: refuse rather than compute one.
+	if [ -e "$c_path" ] && [ ! -L "$c_path" ] &&
+		{ [ ! -r "$c_path" ] || [ ! -x "$c_path" ]; }; then
+		echo "✖ $c_path is not readable — refusing rather than diffing it partially" >&2
+		unresolved=$((unresolved + 1))
+		plan_result=refuse
+		return 0
+	fi
+	c_declared=$(already_keyed "$resolutions" "$c_rel")
+	c_expected=$(already_keyed "$expectations" "$c_rel")
+
+	if [ -L "$c_path" ]; then
+		if [ "$(readlink -- "$c_path")" = "$c_target" ]; then
+			echo "✓ ok         $c_path -> $c_target (already linked)"
+			[ -z "$c_declared" ] || echo "· note      --resolve $c_rel=$c_declared was not needed here"
+			plan_result=ok
+			return 0
+		fi
+		# A link pointing anywhere else, dangling included. Moving a link never
+		# touches its target, so no machine content is at risk and no decision
+		# is needed — this is why a relocated clone self-heals even under
+		# --non-interactive.
+		echo "→ relink     $c_path is a link to $(readlink -- "$c_path")"
+		[ -z "$c_declared" ] || echo "· note      --resolve $c_rel=$c_declared was not needed here"
+		plan_result=relink
+		slot_result=1
+		return 0
+	fi
+
+	if [ ! -e "$c_path" ]; then
+		echo "→ link       $c_path (nothing there)"
+		[ -z "$c_declared" ] || echo "· note      --resolve $c_rel=$c_declared was not needed here"
+		plan_result=link
+		return 0
+	fi
+
+	echo "‼ $c_path is a real path, and the record lives at $c_target"
+	show_diff "$c_rel" "$c_path"
+
+	if [ -n "$c_declared" ]; then
+		if [ "$c_declared" = merge ]; then
+			if [ -z "$c_expected" ]; then
+				echo "✖ $c_path: --resolve $c_rel=merge needs --expect-diff $c_rel=$diff_digest" >&2
+				echo "  merge is the one action that writes machine content into this repo, so it" >&2
+				echo "  only runs against a diff somebody reviewed. Re-run with that digest." >&2
+				unresolved=$((unresolved + 1))
+				plan_result=refuse
+				return 0
+			fi
+			if [ "$c_expected" != "$diff_digest" ]; then
+				echo "✖ $c_path: the diff is not the one you reviewed" >&2
+				echo "  expected $c_rel=$c_expected, this machine is $c_rel=$diff_digest" >&2
+				unresolved=$((unresolved + 1))
+				plan_result=refuse
+				return 0
+			fi
+			declared_merge=1
+		fi
+		echo "→ declared   $c_path: $c_declared (--resolve $c_rel=$c_declared)"
+		c_answer="$c_declared"
+	elif [ "$non_interactive" -eq 1 ] || [ ! -t 0 ]; then
+		echo "✖ $c_path: a real path is in the way, nothing was declared for it and there is no TTY to ask — refusing" >&2
+		echo "  re-run from a terminal, or declare the decision:" >&2
+		echo "    --resolve $c_rel=overwrite" >&2
+		echo "    --resolve $c_rel=merge --expect-diff $c_rel=$diff_digest" >&2
+		unresolved=$((unresolved + 1))
+		plan_result=refuse
+		return 0
+	else
+		if [ "$c_rel" = fish ]; then
+			printf 'Resolve %s — [o]verwrite (repo wins) / [m]erge (machine wins per file) / [r]efuse: ' "$c_path"
+		else
+			printf 'Resolve %s — [o]verwrite (repo wins) / [r]efuse: ' "$c_path"
+		fi
+		read -r c_answer || c_answer=refuse
+	fi
+
+	case "$c_answer" in
+	o | O | overwrite)
+		plan_result=overwrite
+		slot_result=1
+		;;
+	m | M | merge)
+		if [ "$c_rel" != fish ]; then
+			echo "✖ $c_path: merge is only defined for fish — the machine's git tree" >&2
+			echo "  would bring its whole .git into this repo. Use overwrite or refuse." >&2
+			unresolved=$((unresolved + 1))
+			plan_result=refuse
+			return 0
+		fi
+		if [ ! -d "$c_path" ] || [ ! -d "$c_target" ]; then
+			echo "✖ $c_path: merge needs two directories — $c_path and $c_target" >&2
+			unresolved=$((unresolved + 1))
+			plan_result=refuse
+			return 0
+		fi
+		plan_result=merge
+		slot_result=1
+		;;
+	*)
+		if [ -n "$c_declared" ]; then
+			echo "✖ $c_path: refused as declared, nothing will change" >&2
+		else
+			echo "✖ $c_path: refused, nothing will change" >&2
+		fi
+		unresolved=$((unresolved + 1))
+		plan_result=refuse
+		;;
+	esac
+}
+
+# classify_stub — the ghostty include. Never asks: it is install's own output,
+# and any file already there is backed up rather than overwritten in place.
+classify_stub() {
+	s_path="$config_home/ghostty/config.ghostty"
+	s_line="config-file = $repo/ghostty/config.ghostty"
+	plan_result=''
+	slot_result=0
+
+	if [ -f "$s_path" ] && [ ! -L "$s_path" ] && [ "$(cat -- "$s_path")" = "$s_line" ]; then
+		echo "✓ ok         $s_path (already includes this clone)"
+		plan_result=ok
+		return 0
+	fi
+	if [ -e "$s_path" ] || [ -L "$s_path" ]; then
+		echo "→ rewrite    $s_path holds something else"
+		plan_result=rewrite
+		slot_result=1
+		return 0
+	fi
+	echo "→ write      $s_path (nothing there)"
+	plan_result=write
+}
+
+echo "consus install"
+echo "  repo:        $repo"
+echo "  config home: $config_home"
+echo "  backups:     $backup_dir (created only if something is displaced)"
+[ -z "$resolutions" ] || echo "  resolutions:$resolutions"
+[ -z "$expectations" ] || echo "  expect-diff:$expectations"
+echo
+echo "plan:"
+
+classify fish; plan_fish="$plan_result"; slot_fish="$slot_result"
+classify_stub; plan_stub="$plan_result"; slot_stub="$slot_result"
+classify git; plan_git="$plan_result"; slot_git="$slot_result"
+
+# ---------------------------------------------------------------------------
+# Validate. Nothing has moved yet, and nothing will unless the whole plan is
+# executable — including every backup slot, since a slot is never reused.
+# ---------------------------------------------------------------------------
+check_slot() {
+	if [ "$1" -eq 1 ]; then
+		v_dest="$backup_dir/$2"
+		if [ -e "$v_dest" ] || [ -L "$v_dest" ]; then
+			echo "✖ $2: backup slot $v_dest is already occupied — a slot is never written into twice" >&2
+			unresolved=$((unresolved + 1))
+		fi
+	fi
+}
+check_slot "$slot_fish" fish
+check_slot "$slot_stub" ghostty/config.ghostty
+check_slot "$slot_git" git
+
+# Nothing has moved yet, so this is the last place a run can refuse cleanly.
+# The apply phase cannot recover from an unwritable backup directory: it would
+# fail after earlier paths were already linked, which is the half-linked
+# machine the refusal above promises is impossible.
+if [ "$unresolved" -eq 0 ] && [ $((slot_fish + slot_stub + slot_git)) -ne 0 ]; then
+	if ! mkdir -p -- "$backup_dir" 2>/dev/null || [ ! -w "$backup_dir" ]; then
+		echo "✖ backup directory $backup_dir cannot be created or written to" >&2
+		unresolved=$((unresolved + 1))
+	fi
+fi
+
+if [ "$unresolved" -ne 0 ]; then
+	echo >&2
+	echo "✖ install: $unresolved path(s) unresolved — nothing was changed." >&2
+	echo "  The run is all-or-nothing on purpose: a partly linked machine is worse" >&2
+	echo "  than an untouched one." >&2
+	exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# Apply. Every decision is settled, so from here on there are no questions.
+# ---------------------------------------------------------------------------
+echo
+echo "apply:"
+
+# ~/.config is mode 700 while ~/Developer/LRNZ09 is 755, and a fresh clone
+# materialises 644 files. Do it here or it gets forgotten.
+chmod 700 "$repo"
+
+move_aside() {
+	m_dest="$backup_dir/$1"
+	mkdir -p -- "$(dirname -- "$m_dest")"
+	mv -- "$2" "$m_dest"
+	echo "  moved $2 -> $m_dest"
+}
+
+apply_path() {
+	p_rel="$1"
+	p_plan="$2"
+	p_target="$repo/$1"
+	p_path="$config_home/$1"
+
+	case "$p_plan" in
+	ok) ;;
+	link)
+		mkdir -p -- "$(dirname -- "$p_path")"
+		ln -s -- "$p_target" "$p_path"
+		echo "✓ linked     $p_path -> $p_target"
+		;;
+	relink)
+		move_aside "$p_rel" "$p_path"
+		ln -s -- "$p_target" "$p_path"
+		echo "✓ linked     $p_path -> $p_target"
+		;;
+	overwrite)
+		move_aside "$p_rel" "$p_path"
+		ln -s -- "$p_target" "$p_path"
+		echo "✓ linked     $p_path -> $p_target (the repo's content wins)"
+		;;
+	merge)
+		move_aside "$p_rel" "$p_path"
+		# The machine's tree wins per file: files the repo lacks arrive, and
+		# files that differ land as unstaged modifications, so `git status`
+		# becomes the review queue. Ignored files come too — fish_variables is
+		# runtime state, and dropping it would discard every `set -U`.
+		cp -R -- "$backup_dir/$p_rel/." "$p_target/"
+		ln -s -- "$p_target" "$p_path"
+		echo "✓ merged     the machine's $p_rel into $p_target, then linked $p_path"
+		;;
+	*)
+		echo "✖ apply_path: unreachable plan '$p_plan' for $p_rel" >&2
+		exit 1
+		;;
+	esac
+}
+
+apply_path fish "$plan_fish"
+
+s_path="$config_home/ghostty/config.ghostty"
+s_line="config-file = $repo/ghostty/config.ghostty"
+case "$plan_stub" in
+ok) ;;
+rewrite | write)
+	[ "$plan_stub" = write ] || move_aside ghostty/config.ghostty "$s_path"
+	mkdir -p -- "$(dirname -- "$s_path")"
+	printf '%s\n' "$s_line" > "$s_path"
+	echo "✓ wrote      $s_path"
+	;;
+esac
+
+# git goes last, and its backup-move and link creation are adjacent with nothing
+# between them: in that window there is no global git config at all. Every
+# decision was settled in the plan phase, so nothing can interrupt it here.
+apply_path git "$plan_git"
+
+# lefthook resolves its config from the CWD, so a bare call from another repo
+# would create a lefthook.yml there and report success for this one. Measured.
+if ( cd -- "$repo" && lefthook install >/dev/null 2>&1 ); then
+	echo "✓ lefthook   hooks installed in $repo"
+else
+	echo "✖ lefthook install failed in $repo" >&2
+	echo "  the links are in place; run 'lefthook install' there by hand" >&2
+	exit 1
+fi
+
+echo
+if [ "$declared_merge" -eq 1 ]; then
+	echo "· a declared merge put the machine's content in this repo's working tree."
+	echo "  Work the queue before committing: git -C $repo status"
+fi
+echo "✓ install complete. Verify with: $repo/bin/doctor"
