@@ -1,7 +1,7 @@
 # consus — design and migration plan
 
 **Date:** 2026-08-21
-**Status:** design settled, not yet executed
+**Status:** executed 2026-08-23
 **Supersedes:** the 2026-08-20 revision of this document, which activated each
 tool through its own configuration language. Measurement retired that choice —
 see "Options considered" and "Verified facts".
@@ -152,7 +152,7 @@ cleaner than the status quo. It was rejected for forcing the tracked set from
 repo as a standalone clonable artifact.
 
 Only the last of those still stands, and this revision is why. The design now
-tracks 14 files on purpose — 7 fish, 6 git, 1 ghostty — because everything a
+tracks 13 files on purpose — 6 fish, 6 git, 1 ghostty — because everything a
 tool generated is ignored, so "it forces the tracked set down to 19" describes
 this design too and cannot distinguish between them. Exact fisher pinning is
 now carried by `fish_plugins` rather than by vendored files, which any repo
@@ -620,14 +620,14 @@ Two mechanical points, both measured, because getting either wrong is silent:
 - **The directory re-includes must come after `/fish/*`.** That line excludes the
   `conf.d` and `functions` directories themselves, and a file cannot be
   re-included once a parent directory is excluded. Measured across three
-  orderings of the same block: as written above, 7 files stage; with
-  `!/fish/conf.d/` and `!/fish/functions/` moved to the very end of the block, 7
+  orderings of the same block: as written above, 6 files stage; with
+  `!/fish/conf.d/` and `!/fish/functions/` moved to the very end of the block, 6
   files still stage; hoisted *above* `/fish/*`, only **2** stage —
-  `config.fish` and `fish_plugins` — silently dropping all four tracked `conf.d`
-  files and `functions/gfu.fish`. Their position relative to `/fish/conf.d/*`
-  and `/fish/functions/*` does not matter at all, because those patterns require
-  a path component after the directory and so can never match the directory
-  itself.
+  `config.fish` and `fish_plugins` — silently dropping all three tracked
+  `conf.d` files and `functions/gfu.fish`. Their position relative to
+  `/fish/conf.d/*` and `/fish/functions/*` does not matter at all, because those
+  patterns require a path component after the directory and so can never match
+  the directory itself.
 - **No pattern may carry a trailing comment.** gitignore honours `#` only at the
   start of a line, so `/git/.remember/    # 11 entries` is a pattern whose text
   includes the comment, and it matches nothing. Measured: with the annotation
