@@ -791,19 +791,24 @@ In `~/.config/git/config`, under `[credential]`, drop the absolute path:
 ```gitconfig
 [credential]
 	gitLabAuthModes = pat
-	helper = git-credential-manager
+	helper = manager
 	# credentialStore is OS-specific — see config-local
 ```
 
-Measured: the bare name resolves through `PATH` to
-`/usr/local/bin/git-credential-manager` here, which is the same portability
-argument the file's own `!gh` comment already makes one section further down.
+Git prepends `git-credential-` to any helper name that is neither an absolute
+path nor a `!`-prefixed command, so the portable spelling is the bare `manager`,
+which git resolves through `PATH` to `/usr/local/bin/git-credential-manager` —
+the same portability argument the file's own `!gh` comment already makes one
+section further down. Spelling it out in full sends git looking for
+`git-credential-git-credential-manager`, and nothing says so until a push needs
+a credential.
 
 - [ ] **Step 3: Assert the helper still resolves**
 
 ```sh
-test "$(git config --get credential.helper)" = git-credential-manager
+test "$(git config --get credential.helper)" = manager
 command -v git-credential-manager >/dev/null
+git credential-manager --version >/dev/null   # the name git actually invokes
 ```
 
 - [ ] **Step 4: Commit the documents and the config edit**

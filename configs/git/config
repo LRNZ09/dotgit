@@ -88,7 +88,7 @@
 # Credentials and host rewrites
 [credential]
 	gitLabAuthModes = pat
-	helper = git-credential-manager
+	helper = manager
 	# credentialStore is OS-specific — see config-local
 
 # GitHub HTTPS auth via gh's token. `!gh` (not an absolute path) keeps this

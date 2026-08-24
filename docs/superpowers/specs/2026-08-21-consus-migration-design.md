@@ -948,7 +948,7 @@ captures anything:
 
 | File | Change | Why |
 | --- | --- | --- |
-| `configs/git/config` | `helper = git-credential-manager` | drops the absolute `/usr/local/bin/` path; measured, the bare name resolves via `PATH`, which is the portability argument the file's own `!gh` comment already makes |
+| `configs/git/config` | `helper = manager` | drops the absolute `/usr/local/bin/` path. Git prepends `git-credential-` to any helper name that is neither an absolute path nor a `!`-prefixed command, so the bare `manager` is what resolves via `PATH` to `/usr/local/bin/git-credential-manager` — the same portability argument the file's own `!gh` comment already makes. Spelled out in full, git looks for `git-credential-git-credential-manager` and says nothing until a push needs a credential |
 | `configs/fish/config.fish` | `$HOME/.local/bin` | removes a hardcoded `/Users/lorenzo` from a public repo — the same objection this document uses to reject outward symlinks |
 | `configs/fish/conf.d/proto.fish` | wrap in `if type -q proto` | a machine without proto currently gets a hard error at startup |
 | `configs/fish/conf.d/rustup.fish` | wrap in `test -f "$HOME/.cargo/env.fish"` | same, for Rust |
