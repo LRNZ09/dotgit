@@ -1,15 +1,16 @@
 # git
 
 My global Git configuration. Through `~/.config/git` — a symlink into this
-repo, created by [`../bin/install`](../bin/install) — Git reads `config` here as
-its global config file and `ignore` as its global excludes file. Neither needs
-an `[include]` line or a `core.excludesfile` setting: both are Git's own
-default paths, and the link is what makes them resolve here.
+repo's `configs/git`, created by [`../../bin/install`](../../bin/install) — Git
+reads `config` here as its global config file and `ignore` as its global
+excludes file. Neither needs an `[include]` line or a `core.excludesfile`
+setting: both are Git's own default paths, and the link is what makes them
+resolve here.
 
 Because this *is* the global config, anything that writes to it — `git config
 --global`, `gh auth setup-git`, `git-credential-manager configure` — shows up
-as a worktree modification of `git/config`. A machine that has drifted from the
-record says so in `git status`.
+as a worktree modification of `configs/git/config`. A machine that has drifted
+from the record says so in `git status`.
 
 ## Per-machine identity
 
@@ -30,4 +31,4 @@ and says nothing — and the failure mode is signing work commits with the
 personal key.
 
 Secret scanning, the fish and ghostty configuration, and why any of this is a
-symlink: see the [repo README](../README.md).
+symlink: see the [repo README](../../README.md).

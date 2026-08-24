@@ -15,7 +15,7 @@ describes a superseded layout — see "What this repo guarantees a provisioner".
 Renames `LRNZ09/dotgit` to `LRNZ09/consus` and relocates its checkout to
 `~/Developer/LRNZ09/consus`, where it becomes an ordinary browsable repo in
 the same directory as `vesta` and `fides`. Five of its tracked files — `config`,
-both `.example` files, `README.md` and `.gitignore` — move into a `git/`
+both `.example` files, `README.md` and `.gitignore` — move into a `configs/git/`
 subdirectory by `git mv`; `.gitleaks.toml`, the gitleaks workflow and `docs/`
 stay at the root, and `.githooks/` is removed. The repo's entire linear history
 stays intact: no second repo, no `git subtree`, no synthetic merge commit and
@@ -42,8 +42,8 @@ the working tree, nothing is ever deleted, and every move reverses.
 configuration at its **own default path**, which is a symlink into the repo:
 
 ```text
-~/.config/git   →  ~/Developer/LRNZ09/consus/git
-~/.config/fish  →  ~/Developer/LRNZ09/consus/fish
+~/.config/git   →  ~/Developer/LRNZ09/consus/configs/git
+~/.config/fish  →  ~/Developer/LRNZ09/consus/configs/fish
 ```
 
 One tool is the exception. Ghostty's winning config path on macOS is
@@ -87,13 +87,13 @@ ever cause a *missing* file, never a leak.
 ## Options considered
 
 Eight mechanisms were priced with sandboxed tests. The per-tool symlink farm won
-on measurement after the 2026-08-20 revision had provisionally chosen tool-native
-includes.
+on measurement after the 2026-08-20 revision had provisionally chosen
+tool-native includes.
 
 **Per-tool inward symlinks — chosen.** One mechanism, and zero configuration in
-any tool's own language. Measured: git needs *no* stub and no `[include]` at all
-through a directory link, and fish reaches exact baseline parity with no stub and
-none of the five lines the include design required.
+ any tool's own language. Measured: git needs *no* stub and no `[include]` at
+ all through a directory link, and fish reaches exact baseline parity with no
+ stub and none of the five lines the include design required.
 
 Be honest about the scope of that argument as it now stands. The mechanism
 generalises to GUI apps that inherit no shell environment and to tools with no
@@ -111,20 +111,19 @@ cannot express — the repo can be pristine while `~/.config` points elsewhere �
 which is why `bin/doctor` is load-bearing rather than a convenience.
 
 **Tool-native includes — superseded, not wrong.** The 2026-08-20 revision's
-choice: a two-line `[include]` for git, a five-line `source` stub for fish, a
-`config-file` line for ghostty, and `OPENCODE_CONFIG*` env vars for opencode.
-It works, and each mechanism
-was verified end to end. It lost on three counts. It is four mechanisms with five
-distinct silent failure modes: a missing include target is ignored with no way to
-mark an include required; include *ordering* silently decides whether a later
-`git config --global` write shadows the record or is quietly ineffective;
-`git config --global --unset` of an included key returns rc=5 and cannot work;
-omitting the undocumented `set -g fisher_path` line makes 169 abbreviations
-disappear with no error; and env-var activation is dead for any GUI-launched
-program. It could not cover its own tool set — `gh` and `micro` were dropped for
-having no include. And it left the record
-*shadowable*: a global write to a key the repo sets wins or loses depending on a
-line's position in a file no one reads.
+ choice: a two-line `[include]` for git, a five-line `source` stub for fish, a
+ `config-file` line for ghostty, and `OPENCODE_CONFIG*` env vars for opencode.
+ It works, and each mechanism was verified end to end. It lost on three counts.
+ It is four mechanisms with five distinct silent failure modes: a missing
+ include target is ignored with no way to mark an include required; include
+ *ordering* silently decides whether a later `git config --global` write shadows
+ the record or is quietly ineffective; `git config --global --unset` of an
+ included key returns rc=5 and cannot work; omitting the undocumented `set -g
+ fisher_path` line makes 169 abbreviations disappear with no error; and env-var
+ activation is dead for any GUI-launched program. It could not cover its own
+ tool set — `gh` and `micro` were dropped for having no include. And it left the
+ record *shadowable*: a global write to a key the repo sets wins or loses
+ depending on a line's position in a file no one reads.
 
 **Graft a repo onto `~/.config`.** The four objections above.
 
@@ -171,16 +170,16 @@ the entire directory including the ignored credential stores.** Reproduced
 twice. The deny-by-default gitignore is what makes it possible — it renders
 `git status` empty, so git considers the worktree disposable.
 
-**A repo of outward-pointing symlinks** — `consus/fish` pointing at
-`~/.config/fish`. Not merely worse; it versions nothing. git stores a
-mode-120000 blob whose entire content is the target path string: the whole
-`fish` tree behind one link produced 5 blobs and zero tracked configuration.
-`git add fish/config.fish` is refused outright (`fatal: pathspec ... is beyond a
-symbolic link`), no configuration makes git follow the link, edits to the target
-are permanently invisible to `git status`, and a clone on another machine
-materialises dangling links while reporting the tree clean. Note that this is the
-exact opposite of the chosen design's link direction, and the two must not be
-confused.
+**A repo of outward-pointing symlinks** — `consus/configs/fish` pointing at
+ `~/.config/fish`. Not merely worse; it versions nothing. git stores a
+ mode-120000 blob whose entire content is the target path string: the whole
+ `fish` tree behind one link produced 5 blobs and zero tracked configuration.
+ `git add configs/fish/config.fish` is refused outright (`fatal: pathspec ... is
+ beyond a symbolic link`), no configuration makes git follow the link, edits to
+ the target are permanently invisible to `git status`, and a clone on another
+ machine materialises dangling links while reporting the tree clean. Note that
+ this is the exact opposite of the chosen design's link direction, and the two
+ must not be confused.
 
 ## Per-tool activation
 
@@ -199,8 +198,8 @@ Measured against git 2.55.0, fish 4.8.0, ghostty 1.3.1 and gh 2.96.0.
 ### git — a directory link and nothing else
 
 No stub, no `[include]` line, no configuration of any kind. `~/.config/git`
-becomes a link to `consus/git` and git reads `consus/git/config` as the
-global config file, because that is what the path resolves to.
+becomes a link to `consus/configs/git` and git reads `consus/configs/git/config`
+as the global config file, because that is what the path resolves to.
 
 Three properties follow, all measured:
 
@@ -212,13 +211,13 @@ Three properties follow, all measured:
 - **`includeIf "gitdir:~/Developer/work/"` is carried and matches correctly.**
   A work repo returns the work identity and a personal repo the personal one.
   Linking the *config directory* has no effect on gitdir resolution.
-- **Tool writes become visible instead of silent.** `git config --global`,
-  `gh auth setup-git` and `git-credential-manager configure` all write into the
-  **tracked** `git/config`, which then shows up as a worktree modification.
-  The include
-  design's ordering dilemma disappears with the second file: there is no longer
-  a shadowing question, because there is only one global config. A machine that
-  has drifted from the record now says so in `git status`.
+- **Tool writes become visible instead of silent.** `git config --global`, `gh
+  auth setup-git` and `git-credential-manager configure` all write into the
+  **tracked** `configs/git/config`, which then shows up as a worktree
+  modification. The include design's ordering dilemma disappears with the second
+  file: there is no longer a shadowing question, because there is only one
+  global config. A machine that has drifted from the record now says so in `git
+  status`.
 
 `--unset` also improves. `git config --global --unset` of a key in the tracked
 file returns rc=0 and works; only keys living in `config-local`/`config-work`
@@ -226,10 +225,10 @@ still return rc=5, and those are the two files nothing should be unsetting
 programmatically.
 
 The machine-local identity files live **inside the repo** at
-`consus/git/config-local` and `config-work`, untracked. `dotgit`'s own
+`consus/configs/git/config-local` and `config-work`, untracked. `dotgit`'s own
 `.gitignore` already lists `config-local` and `config-work` with unanchored
-patterns, so it keeps working verbatim once it becomes `git/.gitignore`, and the
-`.gitleaks.toml` email rule blocks either from being committed.
+patterns, so it keeps working verbatim once it becomes `configs/git/.gitignore`,
+and the `.gitleaks.toml` email rule blocks either from being committed.
 
 **The `includeIf` gap, stated correctly.** The 2026-08-20 revision recorded that
 "a symlinked ancestor breaks the match silently". That is imprecise, and the
@@ -248,7 +247,7 @@ to get there is harmless.
 
 ### fish — a directory link, and the stub disappears
 
-`~/.config/fish` becomes a link to `consus/fish`. Measured: **169
+`~/.config/fish` becomes a link to `consus/configs/fish`. Measured: **169
 abbreviations and 109 functions, exact parity with the pre-migration baseline,
 with no stub file and no `set -g fisher_path` line.** `$__fish_config_dir`
 resolves to `~/.config/fish`, which *is* the repo, so every mechanism fish has
@@ -278,19 +277,19 @@ including every file fisher installed. Measured on this machine:
 That is 97 entries — 94 regular files and 3 symlinks — of which 6 are the
 record. The symlinks matter twice over: they are the third-party class this
 design has to handle, and they are why every count here is stated in *entries*.
-An enumeration written as `find fish -type f` misses them, which is how they
-went unnoticed in the first pass; `bin/doctor` must therefore enumerate with
-`! -type d` rather than `-type f`.
+An enumeration written as `find configs/fish -type f` misses them, which is how
+they went unnoticed in the first pass; `bin/doctor` must therefore enumerate
+with `! -type d` rather than `-type f`.
 
 Fisher's own bookkeeping is what makes the rest of the split trustworthy: the
 union of its `_fisher_*_files` universal variables named 88 files when measured,
 all 88 existed, and it claimed nothing that was gone. Dropping two plugins in
 Phase 0 takes that to 82.
 
-This inverts the earlier plan, which vendored the plugin files into the repo. The
-record is now `fish_plugins` — a declaration of what should be installed — and
-those 82 files are its build output. Three consequences, and the third is a real
-cost:
+This inverts the earlier plan, which vendored the plugin files into the repo.
+The record is now `fish_plugins` — a declaration of what should be installed —
+and those 82 files are its build output. Three consequences, and the third is a
+real cost:
 
 - The "fisher state is split" problem dissolves rather than being managed.
   `fisher update` reinstalling over tracked files was the whole hazard; nothing
@@ -323,26 +322,27 @@ cost:
   | `halostatue/fish-utils-core` | `@v3` | same ladder |
 
   Two of the four therefore reproduce exactly and two track a major. That is a
-  deliberate loosening of "the declaration determines the build": patch and minor
-  fixes for the halostatue pair arrive without action, and in exchange the same
-  commit can materialise different plugin code on different days. The pair is
-  unused by anything in the tracked set, so the exposure is bounded.
+  deliberate loosening of "the declaration determines the build": patch and
+  minor fixes for the halostatue pair arrive without action, and in exchange the
+  same commit can materialise different plugin code on different days. The pair
+  is unused by anything in the tracked set, so the exposure is bounded.
 
 `fish_variables` stays ignored: it is rewritten constantly, and being ignored it
-is **unrecoverable by `git restore`**, which is why it appears in the destruction
-accounting below.
+is **unrecoverable by `git restore`**, which is why it appears in the
+destruction accounting below.
 
 ### ghostty — the one include
 
 `~/.config/ghostty/config.ghostty`, written by `bin/install`:
 
 ```text
-config-file = /Users/<you>/Developer/LRNZ09/consus/ghostty/config.ghostty
+config-file = /Users/<you>/Developer/LRNZ09/consus/configs/ghostty/config.ghostty
 ```
 
 Ghostty is the exception because its winning path is outside `~/.config`
-entirely. Measured, with `~/Library/Application Support/com.mitchellh.ghostty/config`
-in place carrying `window-save-state = always` and `macos-titlebar-style = tabs`:
+entirely. Measured, with `~/Library/Application
+Support/com.mitchellh.ghostty/config` in place carrying `window-save-state =
+always` and `macos-titlebar-style = tabs`:
 
 | Setup | Effective value |
 | --- | --- |
@@ -357,10 +357,10 @@ writes that file itself and its own header says so, so any assert-absent check
 would hard-fail on a comments-only file.
 
 The include is also the only machine-checkable liveness signal across the three
-live tools: `ghostty +validate-config` exits 1 and names the missing file when the
-target is absent. A severed *link*, by contrast, exits 0 — ghostty simply falls
-back and reports success. Use the bare path, not the documented `?` prefix.
-`~/.config/ghostty` does not exist on this machine today, so nothing is
+live tools: `ghostty +validate-config` exits 1 and names the missing file when
+the target is absent. A severed *link*, by contrast, exits 0 — ghostty simply
+falls back and reports success. Use the bare path, not the documented `?`
+prefix. `~/.config/ghostty` does not exist on this machine today, so nothing is
 displaced.
 
 ### Dropped: opencode, gh and micro
@@ -400,15 +400,16 @@ consus/                          # ~/Developer/LRNZ09/consus, mode 700
 ├── bin/install                     # links, the ghostty stub, lefthook install, chmod
 ├── bin/doctor                      # read-only; readlink targets + ghostty validate
 ├── docs/superpowers/specs/…-consus-migration-design.md   # this file
-├── git/                            # 5 of the 8 dotgit files, git mv'd — history kept
-│   ├── config
-│   ├── config-local.example
-│   ├── config-work.example
-│   ├── ignore                      # was ~/.gitignore — git's default path, via the link
-│   ├── README.md                   # per-machine identity, next to the files
-│   └── .gitignore                  # keeps config-local / config-work untracked
-├── fish/                           # 6 hand-written; 91 generated entries ignored
-├── ghostty/config.ghostty
+├── configs/                        # what each tool reads, under the tool's own name
+│   ├── git/                        # 5 of the 8 dotgit files, git mv'd — history kept
+│   │   ├── config
+│   │   ├── config-local.example
+│   │   ├── config-work.example
+│   │   ├── ignore                  # was ~/.gitignore — git's default path, via the link
+│   │   ├── README.md               # per-machine identity, next to the files
+│   │   └── .gitignore              # keeps config-local / config-work untracked
+│   ├── fish/                       # 6 hand-written; 91 generated entries ignored
+│   └── ghostty/config.ghostty
 ├── lefthook.yml
 ├── .gitleaks.toml                  # already at the root — no merge needed
 ├── .gitignore
@@ -433,17 +434,17 @@ the design document with a single link. Six things:
    not: `zed`, `opencode`, `gh` and `micro`, one line of reason each.
 2. The fresh-machine quickstart in order: clone, `./bin/install`, the three-line
    fisher bootstrap, `./bin/doctor` to verify.
-3. Where per-machine settings go, per tool: `git/config-local`, any new
-   `fish/conf.d/*.fish`, and `?~/.config/ghostty/local.ghostty`.
-4. That `~/.config/git` and `~/.config/fish` are **symlinks into this repo**, and
-   the hazard that follows: `rm -rf ~/.config/fish/` with a trailing slash
+3. Where per-machine settings go, per tool: `configs/git/config-local`, any new
+   `configs/fish/conf.d/*.fish`, and `?~/.config/ghostty/local.ghostty`.
+4. That `~/.config/git` and `~/.config/fish` are **symlinks into this repo**,
+   and the hazard that follows: `rm -rf ~/.config/fish/` with a trailing slash
    empties the repo directory and only the 6 tracked files come back.
 5. Secret scanning: lefthook plus gitleaks locally, and the workflow as the
    backstop that `--no-verify` cannot bypass.
 6. One link to the design document.
 
-It does not restate measurements, rejected alternatives or phases. Those are what
-the design document is for, and duplicating them is how the two begin to
+It does not restate measurements, rejected alternatives or phases. Those are
+what the design document is for, and duplicating them is how the two begin to
 disagree.
 
 There is no `stubs/` directory. Only one stub survives, and it carries an
@@ -506,14 +507,14 @@ The three resolutions:
 
 - **overwrite** — move the existing path into the backup directory, then link.
   The repo's content wins.
-- **merge** — back up as above, then union the two trees into the repo. Files the
-  repo lacks are copied in. For a file present in both but differing, **the
+- **merge** — back up as above, then union the two trees into the repo. Files
+  the repo lacks are copied in. For a file present in both but differing, **the
   machine's version lands in the working tree as an unstaged modification**:
-  nothing is decided silently, `git status` becomes the review queue,
-  `git restore` means "the repo was right" and `git commit` means "the machine
-  was right". Ignored files are copied in too even though the diff does not
-  display them — `fish_variables` is runtime state, not record, and dropping it
-  would discard every `set -U` including fisher's `_fisher_*` keys.
+  nothing is decided silently, `git status` becomes the review queue, `git
+  restore` means "the repo was right" and `git commit` means "the machine was
+  right". Ignored files are copied in too even though the diff does not display
+  them — `fish_variables` is runtime state, not record, and dropping it would
+  discard every `set -U` including fisher's `_fisher_*` keys.
 - **refuse** — print the paths and exit non-zero, changing nothing.
 
 ### Declaring a resolution instead of typing one
@@ -549,14 +550,15 @@ target, asserts that `~/.config/ghostty/config.ghostty` exists and contains
 exactly the `config-file` line for *this* clone's derived path, and only then
 runs `ghostty +validate-config`.
 
-It also reports **unclassified entries** under `fish/`: everything present
-(`! -type d`, so symlinks count), minus what is tracked, minus what fisher
-claims in its `_fisher_*_files` variables, minus the known-generated set, minus
-the three OrbStack symlinks, minus `fish_variables`. All five subtrahends are
-needed for the difference to close: 82 + 6 + 5 + 3 + 1 = 97. Fisher stores its
-paths with a literal `~/.config/fish/` prefix, so doctor must strip that prefix
-and compare paths relative to the fish directory it is actually enumerating —
-otherwise nothing ever matches and every file reports as unclassified.
+It also reports **unclassified entries** under `configs/fish/`: everything
+present (`! -type d`, so symlinks count), minus what is tracked, minus what
+fisher claims in its `_fisher_*_files` variables, minus the known-generated set,
+minus the three OrbStack symlinks, minus `fish_variables`. All five subtrahends
+are needed for the difference to close: 82 + 6 + 5 + 3 + 1 = 97. Fisher stores
+its paths with a literal `~/.config/fish/` prefix, so doctor must strip that
+prefix and compare paths relative to the fish directory it is actually
+enumerating — otherwise nothing ever matches and every file reports as
+unclassified.
 
 A new hand-written function appears in that report, which is the only way it
 becomes visible at all: the allow-list hides it from `git status`. The report is
@@ -564,13 +566,13 @@ advisory and never fails the run, and doctor skips the comparison entirely when
 `_fisher_plugins` is unset, since on a machine where `fisher update` has not run
 every plugin file would otherwise report as unclassified.
 
-Separately, and this one **does** fail: doctor asserts that every plugin declared
-in `fish/fish_plugins` appears in `_fisher_plugins`, reporting "declared but not
-installed: N". Without it, `fides` has no probe for the state that this
-revision's tracking change makes possible — a correct clone, correct links,
-`bin/doctor` green, and not one of the 82 plugin files on disk. The remedy is
-`fisher update`, which needs network, so doctor reports and the operator or the
-`fides` task runs it.
+Separately, and this one **does** fail: doctor asserts that every plugin
+declared in `configs/fish/fish_plugins` appears in `_fisher_plugins`, reporting
+"declared but not installed: N". Without it, `fides` has no probe for the state
+that this revision's tracking change makes possible — a correct clone, correct
+links, `bin/doctor` green, and not one of the 82 plugin files on disk. The
+remedy is `fisher update`, which needs network, so doctor reports and the
+operator or the `fides` task runs it.
 
 The stub assertion is not redundant. Measured: `+validate-config` exits **1**
 when the stub names a target that is missing, but exits **0** when the stub is
@@ -586,91 +588,91 @@ git and fish a severed link is completely silent.
 
 # .remember/: 11 entries, 112 KB, follows the link into the tree.
 # No trailing comments anywhere in this file — see below.
-/git/.remember/
+/configs/git/.remember/
 
 # fish: the record is what I wrote. Tools generated the other 91 entries —
 # fisher owns 82, fish_plugins is the declaration behind those, five are
 # tool-generated and three are OrbStack completion symlinks.
-/fish/*
-!/fish/config.fish
-!/fish/fish_plugins
-!/fish/conf.d/
-!/fish/functions/
-/fish/conf.d/*
-!/fish/conf.d/android.fish
-!/fish/conf.d/proto.fish
-!/fish/conf.d/rustup.fish
-/fish/functions/*
-!/fish/functions/gfu.fish
+/configs/fish/*
+!/configs/fish/config.fish
+!/configs/fish/fish_plugins
+!/configs/fish/conf.d/
+!/configs/fish/functions/
+/configs/fish/conf.d/*
+!/configs/fish/conf.d/android.fish
+!/configs/fish/conf.d/proto.fish
+!/configs/fish/conf.d/rustup.fish
+/configs/fish/functions/*
+!/configs/fish/functions/gfu.fish
 ```
 
-`config-local` and `config-work` are covered by `git/.gitignore`, which arrives
-with the rename and needs no change. `/fish/completions/` needs no rule of its
-own: `/fish/*` covers it and nothing re-includes it, because every file in it is
-generated.
+`config-local` and `config-work` are covered by `configs/git/.gitignore`, which
+arrives with the rename and needs no change. `/configs/fish/completions/` needs
+no rule of its own: `/configs/fish/*` covers it and nothing re-includes it,
+because every file in it is generated.
 
 Verified as written, against a copy of the real tree: it stages exactly those
 six files, leaves nothing untracked-and-unignored, and `git check-ignore`
-confirms the intended rule catches each class — `/fish/functions/*` for a
-fisher-installed function, `/fish/*` for a generated completion,
-`/fish/conf.d/*` for a fish-generated frozen-theme file.
+confirms the intended rule catches each class — `/configs/fish/functions/*` for
+a fisher-installed function, `/configs/fish/*` for a generated completion,
+`/configs/fish/conf.d/*` for a fish-generated frozen-theme file.
 
 Two mechanical points, both measured, because getting either wrong is silent:
 
-- **The directory re-includes must come after `/fish/*`.** That line excludes the
-  `conf.d` and `functions` directories themselves, and a file cannot be
-  re-included once a parent directory is excluded. Measured across three
-  orderings of the same block: as written above, 6 files stage; with
-  `!/fish/conf.d/` and `!/fish/functions/` moved to the very end of the block, 6
-  files still stage; hoisted *above* `/fish/*`, only **2** stage —
-  `config.fish` and `fish_plugins` — silently dropping all three tracked
-  `conf.d` files and `functions/gfu.fish`. Their position relative to
-  `/fish/conf.d/*` and `/fish/functions/*` does not matter at all, because those
-  patterns require a path component after the directory and so can never match
-  the directory itself.
+- **The directory re-includes must come after `/configs/fish/*`.** That line
+  excludes the `conf.d` and `functions` directories themselves, and a file
+  cannot be re-included once a parent directory is excluded. Measured across
+  three orderings of the same block: as written above, 6 files stage; with
+  `!/configs/fish/conf.d/` and `!/configs/fish/functions/` moved to the very end
+  of the block, 6 files still stage; hoisted *above* `/configs/fish/*`, only
+  **2** stage — `config.fish` and `fish_plugins` — silently dropping all three
+  tracked `conf.d` files and `functions/gfu.fish`. Their position relative to
+  `/configs/fish/conf.d/*` and `/configs/fish/functions/*` does not matter at
+  all, because those patterns require a path component after the directory and
+  so can never match the directory itself.
 - **No pattern may carry a trailing comment.** gitignore honours `#` only at the
-  start of a line, so `/git/.remember/    # 11 entries` is a pattern whose text
-  includes the comment, and it matches nothing. Measured: with the annotation
-  appended, `.remember/f` is **not ignored**; with a bare pattern it is. Every
-  annotation in this file therefore sits on its own line.
+  start of a line, so `/configs/git/.remember/ # 11 entries` is a pattern whose
+  text includes the comment, and it matches nothing. Measured: with the
+  annotation appended, `.remember/f` is **not ignored**; with a bare pattern it
+  is. Every annotation in this file therefore sits on its own line.
 
 ### This is a deny-by-default allow-list, which this design rejected once
 
-It is worth naming that directly, because the `/*` allow-list is the construction
-that made a repo at `~/.config` unacceptable. Two things make it acceptable here
-and neither is a matter of taste:
+It is worth naming that directly, because the `/*` allow-list is the
+construction that made a repo at `~/.config` unacceptable. Two things make it
+acceptable here and neither is a matter of taste:
 
-- **No credential is under `fish/`.** The `~/.config` objection was specifically
-  that one corrupted character stages an age key. Here the worst case of a
-  malformed rule is a *missing* shell function, and the tarball plus the machine
-  itself both still have it.
+- **No credential is under `configs/fish/`.** The `~/.config` objection was
+  specifically that one corrupted character stages an age key. Here the worst
+  case of a malformed rule is a *missing* shell function, and the tarball plus
+  the machine itself both still have it.
 - **The blast radius is one directory**, not 1,138 files across seven credential
   stores.
 
-What does carry over is the silent-omission risk, and it is confirmed rather than
-hypothetical: a new hand-written function that nobody adds a negation for is
-**invisible to `git status`**. Measured — a fresh `functions/newthing.fish`
+What does carry over is the silent-omission risk, and it is confirmed rather
+than hypothetical: a new hand-written function that nobody adds a negation for
+is **invisible to `git status`**. Measured — a fresh `functions/newthing.fish`
 produced no output at all, not even as untracked. A design whose whole argument
 is that drift should be visible cannot leave that unhandled, so `bin/doctor`
 detects it.
 
 ## Destruction accounting
 
-**The migration itself deletes nothing.** No step in Phases 0 to 5 runs `rm -rf`,
-or any `rm` at all. Every displaced path is moved — into the repo, or into a
-timestamped directory under `~/Backups` — and every move is reversible by moving
-it back. The only recursive removal anywhere is `git rm -r .githooks` in Phase 1,
-which removes tracked files that stay recoverable from history. Discarding the
-backup directories afterwards is optional, unscheduled and yours to do whenever
-you like.
+**The migration itself deletes nothing.** No step in Phases 0 to 5 runs `rm
+ -rf`, or any `rm` at all. Every displaced path is moved — into the repo, or
+ into a timestamped directory under `~/Backups` — and every move is reversible
+ by moving it back. The only recursive removal anywhere is `git rm -r .githooks`
+ in Phase 1, which removes tracked files that stay recoverable from history.
+ Discarding the backup directories afterwards is optional, unscheduled and yours
+ to do whenever you like.
 
 What follows is therefore a list of hazards to *avoid*, not steps to run. The
 links introduce exactly one new hazard class, and it was measured rather than
 assumed:
 
-- `rm -rf ~/.config/fish/` **with a trailing slash** follows the link and empties
-  the repo directory. Measured: 101 regular files → 0, with the link itself
-  surviving; the 3 OrbStack symlinks go the same way.
+- `rm -rf ~/.config/fish/` **with a trailing slash** follows the link and
+  empties the repo directory. Measured: 101 regular files → 0, with the link
+  itself surviving; the 3 OrbStack symlinks go the same way.
 
   The recovery cost of that accident **went up** when the fish allow-list went
   in, and it is worth stating plainly. `git restore` recovers the 6 tracked
@@ -697,7 +699,7 @@ path this repo contains.
   `include.path` resolves against the link path, and `--show-origin` reports
   `file:$XDG_CONFIG_HOME/git/config-local`.
 - `git config --global --add` through the link landed in the tracked file, left
-  the link intact, and showed `git/config` as modified in the worktree.
+  the link intact, and showed `configs/git/config` as modified in the worktree.
 - `--unset` of a key in the tracked file returns **rc=0**; of a key in an
   included file, **rc=5**.
 - `includeIf "gitdir:"` through a linked config directory: work repo → work
@@ -750,23 +752,23 @@ path this repo contains.
 - The fish allow-list in this document, run against a copy of the real tree,
   stages **exactly** those seven files and leaves nothing
   untracked-and-unignored. `git check-ignore` attributes each class to the
-  intended rule: `/fish/functions/*` catches a fisher-installed function,
-  `/fish/*` a generated completion, `/fish/conf.d/*` a fish-generated frozen
-  file.
+  intended rule: `/configs/fish/functions/*` catches a fisher-installed
+  function, `/configs/fish/*` a generated completion, `/configs/fish/conf.d/*` a
+  fish-generated frozen file.
 - A new hand-written `functions/newthing.fish` under that allow-list produces
   **no `git status` output at all** — not even as untracked. Silent omission is
   real, which is what `bin/doctor`'s unclassified-files report exists for.
 - gitignore re-include ordering, measured across three orderings of the same
   block against a copy of the real tree: as written in this document, 7 files
   stage; with the two directory re-includes moved to the end of the block, 7
-  still stage; hoisted above `/fish/*`, only **2** stage. So the constraint is
-  that the re-includes must follow `/fish/*`, not that they must precede
-  `/fish/conf.d/*` — those patterns require a component after the directory and
-  can never match the directory itself.
+  still stage; hoisted above `/configs/fish/*`, only **2** stage. So the
+  constraint is that the re-includes must follow `/configs/fish/*`, not that
+  they must precede `/configs/fish/conf.d/*` — those patterns require a
+  component after the directory and can never match the directory itself.
 - gitignore honours `#` only at the start of a line. Measured with the global
-  excludes file disabled: `/git/.remember/    # 11 entries` ignores nothing,
-  while a bare `/git/.remember/` ignores. A trailing comment silently disables
-  its pattern.
+  excludes file disabled: `/configs/git/.remember/ # 11 entries` ignores
+  nothing, while a bare `/configs/git/.remember/` ignores. A trailing comment
+  silently disables its pattern.
 - `git add --chmod=+x` records mode `100755` in the index and leaves the
   working-tree file at `644`. Measured: `test -x` fails afterwards, so
   `./bin/install` would exit 126. Only a real `chmod` fixes the file on disk.
@@ -774,26 +776,29 @@ path this repo contains.
   produces **22 MB**, against roughly 7.5 MB when `gatsby/` and `raycast/` are
   excluded. The exclusions bought 14.5 MB.
 - `git mv` with multiple sources **fails** on a destination directory that does
-  not exist: `fatal: destination 'git/' is not a directory`. A single-source
-  `git mv config git` with no `git/` present succeeds and silently creates a
-  *file* named `git`. So Phase 1 step 1 needs its `mkdir`.
-- `ghostty +validate-config` exits **1** when the stub names a missing target but
-  **0** when the stub is absent entirely. Ghostty reports a broken include and
-  stays silent about no include, so `bin/doctor` must assert the stub itself.
+  not exist: `fatal: destination 'configs/git/' is not a directory`. A
+  single-source `git mv config configs/git` with no `configs/git/` present
+  succeeds and silently creates a *file* named `git`. So Phase 1 step 1 needs
+  its `mkdir`.
+- `ghostty +validate-config` exits **1** when the stub names a missing target
+  but **0** when the stub is absent entirely. Ghostty reports a broken include
+  and stays silent about no include, so `bin/doctor` must assert the stub
+  itself.
 - The tracked `config` sets `core.excludesfile = ~/.gitignore`. That file exists
   (123 B, mode 644), holds `**/.claude/settings.local.json` and `.remember/`,
   and lives outside every repo — `git check-ignore -v --no-index .remember/x`
   names it as the source. It is what currently keeps `.remember/` out of this
   repo, a fresh clone does not have it, and the Phase 3 tarball does not contain
-  it either: that archive is rooted at `~/.config` and this file is one level up.
+  it either: that archive is rooted at `~/.config` and this file is one level
+  up.
 - `git check-ignore` refuses paths outside the repository (rc=128), so any
   verification of it must use a repo-relative path from inside the repo.
 
 ### Measured while interviewing the plan, 2026-08-21
 
 - `functions/fisher.fish` and `completions/fisher.fish` are themselves in
-  fisher's own file list, so a fresh clone has no fisher. This is why the rebuild
-  needs a bootstrap and not just `fisher update`.
+  fisher's own file list, so a fresh clone has no fisher. This is why the
+  rebuild needs a bootstrap and not just `fisher update`.
 - Per-plugin contribution, by removing each plugin's files from a copy of the
   tree and re-counting: `jhillyerd/plugin-git` supplies **all 169**
   abbreviations and 12 functions from 19 files; `halostatue/fish-macos` 8
@@ -807,11 +812,11 @@ path this repo contains.
   this way, since abbreviations expand before the command is stored.
 - fish 4.8 provides `up-or-search` as an **embedded** function — no file in
   `share/fish/functions`, and `functions --details` reports
-  `embedded:functions/up-or-search.fish`. Both `up` and `ctrl-p` are preset-bound
-  to it. `2m/fish-history-merge`'s copy differed in three lines: the
-  description, a missing `set -l` that leaks `$lineno` globally, and one added
-  `history merge`. Removing the file leaves `functions | count` at 109 because
-  the embedded version takes over.
+  `embedded:functions/up-or-search.fish`. Both `up` and `ctrl-p` are
+  preset-bound to it. `2m/fish-history-merge`'s copy differed in three lines:
+  the description, a missing `set -l` that leaks `$lineno` globally, and one
+  added `history merge`. Removing the file leaves `functions | count` at 109
+  because the embedded version takes over.
 - `abbr_tips` held `__ABBR_TIPS_KEYS` and `__ABBR_TIPS_VALUES` at 168 entries
   each, plus `ABBR_TIPS_REGEXES` and `ABBR_TIPS_PROMPT`, all universal and
   **exported**: **5,301 bytes** of environment in every child process. Its
@@ -842,10 +847,10 @@ path this repo contains.
 - `proto activate fish | source` is **broken in agent environments** and cannot
   be fixed from this config. proto detects an agent (Claude Code sets `AI_AGENT`
   among others) and emits NDJSON on stdout, which `source` then fails to parse —
-  20 lines of errors per fish startup. `proto activate` rejects `--format`,
-  and neither `env -u AI_AGENT` nor `PROTO_JSON=false` suppresses it. Recorded as
-  a wart, not fixed: it is proto's behaviour, it affects only agent-driven
-  shells, and the `type -q proto` guard is still worth having for portability.
+  20 lines of errors per fish startup. `proto activate` rejects `--format`, and
+  neither `env -u AI_AGENT` nor `PROTO_JSON=false` suppresses it. Recorded as a
+  wart, not fixed: it is proto's behaviour, it affects only agent-driven shells,
+  and the `type -q proto` guard is still worth having for portability.
   Consequence for this plan: verification commands like `fish -c 'abbr | count'`
   print the right answer on stdout with that noise on stderr, so compare stdout.
 - After Phase 0's housekeeping, measured on a copy: `abbr | count` 169,
@@ -861,9 +866,9 @@ path this repo contains.
 - As of 2026-08-20 `dotgit` tracked 8 files across 6 commits — a snapshot, not a
   gate; it is 9 files across 8 commits at the time of this revision and grows
   every time this document is committed. Phase 2 asserts against the numbers
-  Phase 0 records, never against these. The file set was: `config`, `config-local.example`,
-  `config-work.example`, `README.md`, `.gitignore`, `.gitleaks.toml`,
-  `.githooks/pre-commit`, `.github/workflows/gitleaks.yml`.
+  Phase 0 records, never against these. The file set was: `config`,
+  `config-local.example`, `config-work.example`, `README.md`, `.gitignore`,
+  `.gitleaks.toml`, `.githooks/pre-commit`, `.github/workflows/gitleaks.yml`.
 - `git config --global --list` does **not** expand includes. Use
   `git config --list` from inside a repo, or a false negative is easy to record.
 - `rename(2)` and `unlink(2)` act on the final path component and never follow a
@@ -906,10 +911,10 @@ reversible with one command. Nothing here depends on the rest of the plan.
 
 ### Plugin housekeeping, first
 
-Two plugins come out before anything is copied, because Phase 1 captures whatever
-the fish directory looks like at that moment. This is a change to the machine's
-configuration that the migration then records — not part of the migration
-mechanism — so it belongs here, ahead of the clone.
+Two plugins come out before anything is copied, because Phase 1 captures
+whatever the fish directory looks like at that moment. This is a change to the
+machine's configuration that the migration then records — not part of the
+migration mechanism — so it belongs here, ahead of the clone.
 
 ```fish
 fisher remove 2m/fish-history-merge gazorby/fish-abbreviation-tips
@@ -919,34 +924,35 @@ mv ~/.config/fish/conf.d/abbr_tips_override.fish ~/Backups/   # now dead code
 `2m/fish-history-merge` was one file: a 2020 copy of `up-or-search`, which fish
 4.8 provides as an embedded function, differing from fish's current version in
 three lines — a description, a missing `set -l` that leaks `$lineno` into the
-global scope, and one added `history merge`. Measured: with the file gone, fish's
-embedded version takes over and `functions | count` stays at 109, so the only
-thing lost is merging other live sessions' history on Up. The behaviour is
+global scope, and one added `history merge`. Measured: with the file gone,
+fish's embedded version takes over and `functions | count` stays at 109, so the
+only thing lost is merging other live sessions' history on Up. The behaviour is
 dropped rather than reimplemented.
 
 `gazorby/fish-abbreviation-tips` was 201 lines, unmaintained since January 2023,
-hooked into `fish_postexec` on every command, and mirrored every abbreviation and
-alias into two universal **exported** arrays. Measured: **5,301 bytes of
+hooked into `fish_postexec` on every command, and mirrored every abbreviation
+and alias into two universal **exported** arrays. Measured: **5,301 bytes of
 environment carried into every child process**, for data nothing outside fish
 reads — and that export is the mechanism behind the CESU-8 crash the
 `abbr_tips_override.fish` comment documents, so its removal retires a bug class
 rather than a symptom. Its `abbr_tips_uninstall` event erases every variable it
 set and restores the three key bindings, so `fisher remove` reclaims everything.
-`conf.d/abbr_tips_override.fish` exists only to patch that plugin, so it goes too.
+`conf.d/abbr_tips_override.fish` exists only to patch that plugin, so it goes
+too.
 
 ### Portability edits, also first
 
-The repo's contract is that a clone works on any machine, not just this one. Four
-spots break that today, and all four are one-liners applied before Phase 1
+The repo's contract is that a clone works on any machine, not just this one.
+Four spots break that today, and all four are one-liners applied before Phase 1
 captures anything:
 
 | File | Change | Why |
 | --- | --- | --- |
-| `git/config` | `helper = git-credential-manager` | drops the absolute `/usr/local/bin/` path; measured, the bare name resolves via `PATH`, which is the portability argument the file's own `!gh` comment already makes |
-| `fish/config.fish` | `$HOME/.local/bin` | removes a hardcoded `/Users/lorenzo` from a public repo — the same objection this document uses to reject outward symlinks |
-| `fish/conf.d/proto.fish` | wrap in `if type -q proto` | a machine without proto currently gets a hard error at startup |
-| `fish/conf.d/rustup.fish` | wrap in `test -f "$HOME/.cargo/env.fish"` | same, for Rust |
-| `fish/conf.d/android.fish` | guard on `test -d` for the SDK and the JBR | both paths are macOS-only and unconditional today |
+| `configs/git/config` | `helper = git-credential-manager` | drops the absolute `/usr/local/bin/` path; measured, the bare name resolves via `PATH`, which is the portability argument the file's own `!gh` comment already makes |
+| `configs/fish/config.fish` | `$HOME/.local/bin` | removes a hardcoded `/Users/lorenzo` from a public repo — the same objection this document uses to reject outward symlinks |
+| `configs/fish/conf.d/proto.fish` | wrap in `if type -q proto` | a machine without proto currently gets a hard error at startup |
+| `configs/fish/conf.d/rustup.fish` | wrap in `test -f "$HOME/.cargo/env.fish"` | same, for Rust |
+| `configs/fish/conf.d/android.fish` | guard on `test -d` for the SDK and the JBR | both paths are macOS-only and unconditional today |
 
 Measured after all five: `abbr | count` 169, `functions | count` 108,
 `ANDROID_HOME` and `JAVA_HOME` still set, `.local/bin` still on `PATH`, proto
@@ -959,9 +965,9 @@ overrides it in `config-local`, which is included last and therefore wins. The
 same applies to the `difftool`/`mergetool` commands.
 
 Ghostty needs nothing for platform differences. Measured: `gtk-single-instance`,
-`gtk-titlebar` and `linux-cgroup` in a config on macOS produce no diagnostics and
-exit 0, so the `macos-*` keys are inert on Linux by the same mechanism rather
-than being errors.
+`gtk-titlebar` and `linux-cgroup` in a config on macOS produce no diagnostics
+and exit 0, so the `macos-*` keys are inert on Linux by the same mechanism
+rather than being errors.
 
 #### Where per-machine settings go, per tool
 
@@ -969,10 +975,11 @@ Portability needs an escape hatch per tool, not just guards. All three exist:
 
 - **git** — `config-local`, already there, untracked, included last so it wins.
 - **fish** — free, and worth stating as a designed property rather than leaving
-  as an accident: the allow-list ignores everything under `fish/` that it does
-  not name, so **any new `conf.d/*.fish` file is machine-local by default**. Drop
-  a `conf.d/zz-local.fish` on a machine and it is untracked with no rule change.
-- **ghostty** — the repo's `ghostty/config.ghostty` ends with
+  as an accident: the allow-list ignores everything under `configs/fish/` that
+  it does not name, so **any new `conf.d/*.fish` file is machine-local by
+  default**. Drop a `conf.d/zz-local.fish` on a machine and it is untracked with
+  no rule change.
+- **ghostty** — the repo's `configs/ghostty/config.ghostty` ends with
   `config-file = ?~/.config/ghostty/local.ghostty`. The `?` prefix makes it
   optional: measured, a missing target exits 0 silently, and a present target
   loads and wins on precedence. This is the one place the `?` form is correct;
@@ -996,8 +1003,8 @@ git -C ~/.config/git ls-files | wc -l                            # 9 — for the
 
 Only the commit count is a gate. The tracked-file count is *not* one: Phase 1
 deliberately adds the whole config tree, so the total is meant to grow. What
-Phase 2 checks instead is that the six files expected under `git/` are there and
-that `git log --follow` still reaches through the rename.
+Phase 2 checks instead is that the six files expected under `configs/git/` are
+there and that `git log --follow` still reaches through the rename.
 
 ## Phase 1 — restructure in a fresh clone
 
@@ -1011,45 +1018,45 @@ git clone https://github.com/LRNZ09/consus.git ~/Developer/LRNZ09/consus
 1. **`mkdir git` first**, then:
 
    ```sh
-   git mv config config-local.example config-work.example README.md .gitignore git/
+   git mv config config-local.example config-work.example README.md .gitignore configs/git/
    ```
 
-   The `mkdir` is not optional and not cosmetic: measured, `git mv` with multiple
-   sources fails outright on a destination that does not exist
-   (`fatal: destination 'git/' is not a directory`), and the obvious per-file
-   workaround is worse — a single-source `git mv config git` with no `git/`
-   present silently creates a *file* named `git`. Since git tracks no
-   directories, the bare `mkdir` needs nothing else.
+   The `mkdir` is not optional and not cosmetic: measured, `git mv` with
+   multiple sources fails outright on a destination that does not exist (`fatal:
+   destination 'configs/git/' is not a directory`), and the obvious per-file
+   workaround is worse — a single-source `git mv config configs/git` with no
+   `configs/git/` present silently creates a *file* named `git`. Since git
+   tracks no directories, the bare `mkdir` needs nothing else.
 
    Leave `.gitleaks.toml` and `.github/workflows/gitleaks.yml` at the root;
    `docs/` is already there.
 
-   Then **edit the moved `git/README.md`**, do not just move it. Its Setup
-   section tells the reader to run `git config core.hooksPath .githooks`, and
-   this same step deletes `.githooks/` in favour of the root `lefthook.yml`;
+   Then **edit the moved `configs/git/README.md`**, do not just move it. Its
+   Setup section tells the reader to run `git config core.hooksPath .githooks`,
+   and this same step deletes `.githooks/` in favour of the root `lefthook.yml`;
    shipping it unedited leaves an instruction that no longer applies. Its
    per-machine identity section is what survives, and it stays next to the
    `config-local` and `config-work` files it describes.
 
    Remove the old hook directory with
    `git rm -r .githooks` — tracked files, recoverable from history. Commit.
-2. **Copy** `~/.gitignore` in as `git/ignore` — `cp`, not `mv` — and delete the
-   `excludesfile` line from `git/config`. The tracked config currently points
-   `core.excludesfile` at `~/.gitignore`, a file that lives outside every repo
-   and that nothing backs up; the Phase 3 tarball does not even reach it, being
-   rooted at `~/.config`. Through the link, `$XDG_CONFIG_HOME/git/ignore` is
-   git's own documented default, so tracking it there needs no configuration at
-   all — the same zero-configuration argument this design already makes for
-   `config` itself. Commit.
+2. **Copy** `~/.gitignore` in as `configs/git/ignore` — `cp`, not `mv` — and
+   delete the `excludesfile` line from `configs/git/config`. The tracked config
+   currently points `core.excludesfile` at `~/.gitignore`, a file that lives
+   outside every repo and that nothing backs up; the Phase 3 tarball does not
+   even reach it, being rooted at `~/.config`. Through the link,
+   `$XDG_CONFIG_HOME/git/ignore` is git's own documented default, so tracking it
+   there needs no configuration at all — the same zero-configuration argument
+   this design already makes for `config` itself. Commit.
 
    `cp` matters. Until Phase 3 the live global config is still
-   `~/.config/git/config`, which still points at `~/.gitignore`; moving that file
-   now would silently stop `.remember/` from being ignored anywhere, in exactly
-   the window where a stray `git add -A` could stage it. The original is
+   `~/.config/git/config`, which still points at `~/.gitignore`; moving that
+   file now would silently stop `.remember/` from being ignored anywhere, in
+   exactly the window where a stray `git add -A` could stage it. The original is
    displaced in Phase 3 with everything else, and nothing outside the repo is
    touched before then.
 3. Write the root `README.md`, root `.gitignore` and `lefthook.yml`. Commit.
-   The root `.gitignore` must exist **before** `fish/` is added, or
+   The root `.gitignore` must exist **before** `configs/fish/` is added, or
    `fish_variables` walks straight into the index.
 
    ```yaml
@@ -1067,17 +1074,17 @@ git clone https://github.com/LRNZ09/consus.git ~/Developer/LRNZ09/consus
 
    | Source | Destination |
    | --- | --- |
-   | `~/.config/fish/` | `fish/` |
-   | Application Support ghostty config | `ghostty/config.ghostty` |
+   | `~/.config/fish/` | `configs/fish/` |
+   | Application Support ghostty config | `configs/ghostty/config.ghostty` |
 
-   Copy the fish directory **whole**, all 97 entries as they stand after Phase 0.
-   The allow-list stages only the 6 hand-written ones, and the other 91 have
-   to be present in the working
-   tree regardless: after activation this directory *is* `~/.config/fish`, so
-   fisher's files must physically live here for fish to work at all. Ignored and
-   absent are different things. `cp -R` keeps the three OrbStack entries as
-   symlinks into `/Applications/OrbStack.app`, which is correct — they are
-   machine-specific, ignored, and a clone should not carry them.
+   Copy the fish directory **whole**, all 97 entries as they stand after Phase
+   0. The allow-list stages only the 6 hand-written ones, and the other 91 have
+   to be present in the working tree regardless: after activation this directory
+   *is* `~/.config/fish`, so fisher's files must physically live here for fish
+   to work at all. Ignored and absent are different things. `cp -R` keeps the
+   three OrbStack entries as symlinks into `/Applications/OrbStack.app`, which
+   is correct — they are machine-specific, ignored, and a clone should not carry
+   them.
 
    Ghostty keeps only the four real settings out of a file that is otherwise the
    shipped template's comments.
@@ -1089,8 +1096,8 @@ git clone https://github.com/LRNZ09/consus.git ~/Developer/LRNZ09/consus
    window-save-state = always
    ```
 
-5. Pin `fish/fish_plugins` per the table under "What is tracked": add `@v0.4` to
-   `jhillyerd/plugin-git`, leave `halostatue/fish-macos@v7` and
+5. Pin `configs/fish/fish_plugins` per the table under "What is tracked": add
+   `@v0.4` to `jhillyerd/plugin-git`, leave `halostatue/fish-macos@v7` and
    `halostatue/fish-utils-core@v3` as they are, and leave `jorgebucaran/fisher`
    unpinned. No lookup is needed at execution time — the tags were resolved
    while writing this document. Commit.
@@ -1113,20 +1120,20 @@ git clone https://github.com/LRNZ09/consus.git ~/Developer/LRNZ09/consus
 
 ### Rehearse bin/install against a drifted machine
 
-**This is the gate the whole plan hangs on, and it comes first in implementation.**
-Both scripts are specified here in prose only, and prose in this document has a
-measured failure rate: three claims written from reasoning rather than
-measurement turned out false in review — the gitignore re-include ordering, the
-effect of a trailing comment on a pattern, and what `git add --chmod=+x` does to
-the file on disk. The scripts are the largest remaining body of unmeasured prose,
-so writing them and passing this rehearsal is task one, and no other phase starts
-until it does.
+**This is the gate the whole plan hangs on, and it comes first in
+ implementation.** Both scripts are specified here in prose only, and prose in
+ this document has a measured failure rate: three claims written from reasoning
+ rather than measurement turned out false in review — the gitignore re-include
+ ordering, the effect of a trailing comment on a pattern, and what `git add
+ --chmod=+x` does to the file on disk. The scripts are the largest remaining
+ body of unmeasured prose, so writing them and passing this rehearsal is task
+ one, and no other phase starts until it does.
 
-Required, not optional, and it happens on this machine — but against a redirected
-`XDG_CONFIG_HOME`, so no real path is touched. The merge path is the one piece of
-this design that no measurement covers, and its conflict rule only matters when
-there is a conflict, so it has to be exercised against drift that is real rather
-than imagined:
+Required, not optional, and it happens on this machine — but against a
+redirected `XDG_CONFIG_HOME`, so no real path is touched. The merge path is the
+one piece of this design that no measurement covers, and its conflict rule only
+matters when there is a conflict, so it has to be exercised against drift that
+is real rather than imagined:
 
 ```sh
 R=~/Backups/consus-rehearsal-$(date +%Y%m%dT%H%M%S); mkdir -p "$R/xdg"
@@ -1145,17 +1152,18 @@ XDG_CONFIG_HOME="$R/xdg" ./bin/install --backup-dir "$R/backup"
 ```
 
 Choose the resolutions Phase 3 would choose, which are not the same for both
-paths: **merge** at `$R/xdg/fish`, **overwrite** at `$R/xdg/git`. Merging the git
-path would copy the old checkout's root-level files — and its nested `.git` —
-into the repo's `git/`, which is precisely why Phase 3 does not do it.
+paths: **merge** at `$R/xdg/fish`, **overwrite** at `$R/xdg/git`. Merging the
+git path would copy the old checkout's root-level files — and its nested `.git`
+— into the repo's `configs/git/`, which is precisely why Phase 3 does not do it.
 
 Then assert, in order:
 
-1. The diff at the fish path named `config.fish` and `fish_plugins` and listed no
-   ignored file; the diff at the git path listed the four paths that moved to the
-   repo root and did **not** list `.git/`.
-2. `git status` shows exactly `fish/config.fish` and `fish/fish_plugins`
-   modified, carrying the machine's content, and **nothing** under `git/`.
+1. The diff at the fish path named `config.fish` and `fish_plugins` and listed
+   no ignored file; the diff at the git path listed the four paths that moved to
+   the repo root and did **not** list `.git/`.
+2. `git status` shows exactly `configs/fish/config.fish` and
+   `configs/fish/fish_plugins` modified, carrying the machine's content, and
+   **nothing** under `configs/git/`.
 3. `functions/drifted.fish` is present in the working tree and invisible to
    `git status`, and `XDG_CONFIG_HOME="$R/xdg" ./bin/doctor` names it — and only
    it — as unclassified. This is the allow-list's silent-omission risk and its
@@ -1163,17 +1171,17 @@ Then assert, in order:
 4. `"$R/backup"` holds the pre-install `fish` and `git` trees at their relative
    paths, and the originals under `"$R/xdg"` are now links.
 5. A second run reports the links already correct and changes nothing.
-6. `XDG_CONFIG_HOME="$R/xdg2" ./bin/install --non-interactive --backup-dir "$R/backup2"`
-   refuses and changes nothing: `$R/xdg2/fish` is still a real directory
-   afterwards, and `$R/backup2` was never created. It needs its own backup
-   directory so the occupied-slot refusal cannot be mistaken for the
+6. `XDG_CONFIG_HOME="$R/xdg2" ./bin/install --non-interactive --backup-dir
+   "$R/backup2"` refuses and changes nothing: `$R/xdg2/fish` is still a real
+   directory afterwards, and `$R/backup2` was never created. It needs its own
+   backup directory so the occupied-slot refusal cannot be mistaken for the
    non-interactive refusal.
 
 Then put the repo back, without deleting anything:
 
 ```sh
-git restore fish/config.fish fish/fish_plugins
-mv fish/functions/drifted.fish "$R/backup"/
+git restore configs/fish/config.fish configs/fish/fish_plugins
+mv configs/fish/functions/drifted.fish "$R/backup"/
 ```
 
 The gate below will not pass until this is done, since it requires a clean tree.
@@ -1190,8 +1198,8 @@ test -z "$(git status --porcelain)"                                  # clean tre
                                                                      # the one that matters
 gitleaks git --no-banner --redact -v --config .gitleaks.toml .       # clean over full history
 test "$(git rev-list --count HEAD)" -ge "$BASELINE_COMMITS"          # no history lost
-test "$(git ls-files git/ | wc -l | tr -d ' ')" -eq 6                # 5 moved + git/ignore
-test "$(git log --follow --oneline -- git/config | wc -l)" -gt "$(git log --oneline -- git/config | wc -l)"
+test "$(git ls-files configs/git/ | wc -l | tr -d ' ')" -eq 6                # 5 moved + configs/git/ignore
+test "$(git log --follow --oneline -- configs/git/config | wc -l)" -gt "$(git log --oneline -- configs/git/config | wc -l)"
                                                                      # rename didn't orphan history
 test -x bin/install && test -x bin/doctor                            # modes committed
 sh -n bin/install && sh -n bin/doctor                                # both parse
@@ -1205,11 +1213,12 @@ document is committed again — a hardcoded "6 commits" was already wrong by the
 time it was written.
 
 The `--follow` line is self-relative on purpose: measured on a scratch repo, a
-plain `git log -- git/config` after the move reports **1** commit while
-`--follow` reports **4**, and the move registers as `rename config => git/config
-(100%)`. Asserting that `--follow` sees strictly more than the plain form proves
-the rename was detected without hardcoding either count. `./bin/doctor` must fail
-its link check specifically — exit 1, not 126 from a missing executable bit.
+plain `git log -- configs/git/config` after the move reports **1** commit while
+`--follow` reports **4**, and the move registers as `rename config =>
+configs/git/config (100%)`. Asserting that `--follow` sees strictly more than
+the plain form proves the rename was detected without hardcoding either count.
+`./bin/doctor` must fail its link check specifically — exit 1, not 126 from a
+missing executable bit.
 
 `push -u` rather than `push`: it sets the upstream, without which
 `git log @{u}..` exits 128 and the `fides` `safety` role cannot check this
@@ -1247,9 +1256,9 @@ this is the only copy that exists anywhere.
 
 The migration backup that `bin/install` writes is a different thing and carries
 no credentials at all: `config-local`, `config-work` and `.remember/` are moved
-into the repo before install runs, so what lands in `~/Backups/consus-migration-*`
-is the old checkout's tracked-and-pushed content plus its `.git`. Only the
-tarball needs treating as sensitive.
+into the repo before install runs, so what lands in
+`~/Backups/consus-migration-*` is the old checkout's tracked-and-pushed content
+plus its `.git`. Only the tarball needs treating as sensitive.
 
 ### Install
 
@@ -1260,39 +1269,39 @@ covers all three remaining paths:
 ```sh
 BK=~/Backups/consus-migration-$(date +%Y%m%dT%H%M%S)   # capture it; rollback needs it
 mkdir -p "$BK"
-mv ~/.config/git/config-local ~/.config/git/config-work ~/Developer/LRNZ09/consus/git/
-mv ~/.config/git/.remember ~/Developer/LRNZ09/consus/git/
-mv ~/.gitignore "$BK"/gitignore-home        # now redundant: tracked as git/ignore
+mv ~/.config/git/config-local ~/.config/git/config-work ~/Developer/LRNZ09/consus/configs/git/
+mv ~/.config/git/.remember ~/Developer/LRNZ09/consus/configs/git/
+mv ~/.gitignore "$BK"/gitignore-home        # now redundant: tracked as configs/git/ignore
 cd ~/Developer/LRNZ09/consus
 ./bin/install --backup-dir "$BK"
 echo "$BK"   # write it down — every rollback path starts here
 ```
 
-A full timestamp, not `date +%F`: the day-granular form would put two runs on one
-day into the same directory, which is exactly what the no-clobber guarantee
+A full timestamp, not `date +%F`: the day-granular form would put two runs on
+one day into the same directory, which is exactly what the no-clobber guarantee
 above forbids. Since install refuses an occupied slot, a re-run needs a fresh
 `BK`.
 
-At `~/.config/git`, choose **overwrite**: everything still there is committed and
-pushed, so the old checkout — `.git` included — is simply moved into the backup
-directory, where it stays as the rollback until you choose to discard it. Choose
-overwrite rather than merge here, because the four paths that moved to the repo
-root (`.gitleaks.toml`, `.github/`, `docs/`, and the old `README.md`) are absent
-from `git/` by design, and merge would faithfully copy them back in as untracked
-cruft.
+At `~/.config/git`, choose **overwrite**: everything still there is committed
+and pushed, so the old checkout — `.git` included — is simply moved into the
+backup directory, where it stays as the rollback until you choose to discard it.
+Choose overwrite rather than merge here, because the four paths that moved to
+the repo root (`.gitleaks.toml`, `.github/`, `docs/`, and the old `README.md`)
+are absent from `configs/git/` by design, and merge would faithfully copy them
+back in as untracked cruft.
 
 `~/.config/fish` is a real directory today and goes through the diff-and-merge
 path. `~/.config/ghostty` does not exist, so the stub is simply written.
 
 The trees are near-identical, since the repo's copies were taken from them, with
-**one guaranteed conflict**: `fish/fish_plugins`. Phase 1 step 5 added the
-`.4` pin to `jhillyerd/plugin-git`; the machine's copy does not have it. The
-merge rule puts the machine's
-version in the working tree as an unstaged modification, so the pinning appears
-to be lost. It is not — resolve it the way the merge rule intends:
+**one guaranteed conflict**: `configs/fish/fish_plugins`. Phase 1 step 5 added
+the `.4` pin to `jhillyerd/plugin-git`; the machine's copy does not have it. The
+merge rule puts the machine's version in the working tree as an unstaged
+modification, so the pinning appears to be lost. It is not — resolve it the way
+the merge rule intends:
 
 ```sh
-git restore fish/fish_plugins    # the repo was right
+git restore configs/fish/fish_plugins    # the repo was right
 ```
 
 Then work the rest of the review queue the same way — `git restore` or
@@ -1300,8 +1309,8 @@ Then work the rest of the review queue the same way — `git restore` or
 clean tree and an empty `git log ..`, so neither is meaningful until this
 queue is empty.
 
-Note also that merge copies ignored files in, and ignored files leave no trace in
-`git status` and have no `git restore` path. In practice they are identical
+Note also that merge copies ignored files in, and ignored files leave no trace
+in `git status` and have no `git restore` path. In practice they are identical
 anyway — the repo's copies came from these same directories — but if a repo-side
 ignored file matters, back it up before merging.
 
@@ -1336,9 +1345,9 @@ fish -c 'functions | count'                            # 108
 ghostty +validate-config                               # exits 0
 ghostty +show-config | grep -E 'titlebar|shell-integration|window-save-state'
 ls -ld ~/.config/git ~/.config/fish                    # two symlinks into the repo
-grep -qF "$(pwd -P)/ghostty/config.ghostty" ~/.config/ghostty/config.ghostty
+grep -qF "$(pwd -P)/configs/ghostty/config.ghostty" ~/.config/ghostty/config.ghostty
                                                        # stub names THIS clone
-git check-ignore -v --no-index .remember/x             # names git/ignore in the repo
+git check-ignore -v --no-index .remember/x             # names configs/git/ignore in the repo
 (cd ~/.config/fish && git rev-parse --show-toplevel)   # names the repo — link is live
 cd ~ && git -C .config status                          # fatal: not a repo
 ```
@@ -1353,11 +1362,11 @@ that walks up from an unlinked tool's config directory finds one.
   `~/.config/git/` is its own repository. Under this design it is a symlink into
   `consus`.
 - Add to the restore checklist: `gh config set git_protocol https` and the `co`
-  alias; the three-line fisher bootstrap under "What is tracked" — `curl | source`,
-  `fisher install jorgebucaran/fisher`, `fisher update` — since fisher itself is
-  not tracked; `sudo chown` for `~/.config/micro` if micro is ever configured for
-  real; and the `includeIf` invariant — `~/Developer/work` must be a real
-  directory all the way down, with work repos physically inside it.
+  alias; the three-line fisher bootstrap under "What is tracked" — `curl |
+  source`, `fisher install jorgebucaran/fisher`, `fisher update` — since fisher
+  itself is not tracked; `sudo chown` for `~/.config/micro` if micro is ever
+  configured for real; and the `includeIf` invariant — `~/Developer/work` must
+  be a real directory all the way down, with work repos physically inside it.
 - The migration backup under `~/Backups/` is redundant once Phase 4 passes and
   the push is confirmed, but nothing in this plan deletes it. Discard it when
   you want to, however you prefer to discard things.
@@ -1391,18 +1400,18 @@ mv ~/.config/ghostty/config.ghostty "$B"/
 
 mv "$BK"/git "$BK"/fish ~/.config/                     # $BK from Phase 3
 mv "$BK"/gitignore-home ~/.gitignore                   # core.excludesfile target
-mv ~/Developer/LRNZ09/consus/git/config-local ~/Developer/LRNZ09/consus/git/config-work ~/.config/git/
-mv ~/Developer/LRNZ09/consus/git/.remember ~/.config/git/
+mv ~/Developer/LRNZ09/consus/configs/git/config-local ~/Developer/LRNZ09/consus/configs/git/config-work ~/.config/git/
+mv ~/Developer/LRNZ09/consus/configs/git/.remember ~/.config/git/
 git -C ~/.config/git branch --unset-upstream            # see below
 ```
 
-`~/.gitignore` has to come back explicitly, and the tarball **cannot** supply it:
-that archive is rooted at `~/.config` and this file sits one level up. The
-restored `git/config` still points `core.excludesfile` at it, so skipping this
-line leaves that setting dangling and stops `.remember/` being ignored
-anywhere —
-the exposure Phase 1 step 2 exists to avoid. If `$BK` has already been discarded,
-recreate the file by copying `git/ignore` out of the repo.
+`~/.gitignore` has to come back explicitly, and the tarball **cannot** supply
+it: that archive is rooted at `~/.config` and this file sits one level up. The
+restored `configs/git/config` still points `core.excludesfile` at it, so
+skipping this line leaves that setting dangling and stops `.remember/` being
+ignored anywhere — the exposure Phase 1 step 2 exists to avoid. If `$BK` has
+already been discarded, recreate the file by copying `configs/git/ignore` out of
+the repo.
 
 That last line matters. The restored `~/.config/git` is a live checkout whose
 remote was repointed in Phase 0 and whose branch tracks a `main` that now
@@ -1443,8 +1452,8 @@ only to serve another repo:
 - **The clone has an upstream.** Phase 2 pushes with `push -u`, without which
   `git log @{u}..` exits 128 and no caller can tell whether the satellite is
   ahead.
-- **The satellite is a plain clone at a real path.** No graft, no `git init` over
-  an existing directory, no bare repo: `git clone` to
+- **The satellite is a plain clone at a real path.** No graft, no `git init`
+  over an existing directory, no bare repo: `git clone` to
   `~/Developer/LRNZ09/consus`, then two symlinks and one stub created by
   `bin/install`.
 
@@ -1452,17 +1461,17 @@ That last point is where `fides`' current spec diverges most, and the divergence
 is deeper than a list of edits. Its architecture describes satellites "cloned to
 their real paths with no symlink layer", a `consus → ~/.config` graft, and
 "adding a newly-configured tool is a gitignore line in `consus`". This design
-replaced all three: the satellite lives outside `~/.config`, the symlink layer is
-the mechanism rather than something avoided, and adding a tool is a directory plus
-an allow-list negation plus a link. Those sections need **rewriting against the
-contract above, not patching** — eight bullet edits applied to an architecture
-section that describes the superseded shape would leave that document
-contradicting itself.
+replaced all three: the satellite lives outside `~/.config`, the symlink layer
+is the mechanism rather than something avoided, and adding a tool is a directory
+plus an allow-list negation plus a link. Those sections need **rewriting against
+the contract above, not patching** — eight bullet edits applied to an
+architecture section that describes the superseded shape would leave that
+document contradicting itself.
 
 Two things in that spec need attention regardless of this design, and are noted
-here only so they are not lost: its `safety` role is already unsatisfiable today,
-because `~/.claude` reports `settings.json` as modified whenever Claude Code
-rewrites its own tracked file; and its exclusion table calls `acli/` and
+here only so they are not lost: its `safety` role is already unsatisfiable
+today, because `~/.claude` reports `settings.json` as modified whenever Claude
+Code rewrites its own tracked file; and its exclusion table calls `acli/` and
 `libvirt/` "regenerable state, no settings worth carrying" when both hold
 credentials, which invites someone to allow-list them later.
 
@@ -1487,17 +1496,16 @@ credentials, which invites someone to allow-list them later.
 
 - The rebuild bootstrap is **documented but untested end to end**, because
   testing it means rebuilding a machine. The gap it closes was real: fisher is
-  itself one of the ignored plugin files, so the earlier "just run `fisher update`"
-  instruction could not have worked. The sequence is now written out under
-  "What is tracked", it needs network, and `bin/doctor` detects the state that
-  calls for it. Nothing on this machine is at risk either way.
+  itself one of the ignored plugin files, so the earlier "just run `fisher
+  update`" instruction could not have worked. The sequence is now written out
+  under "What is tracked", it needs network, and `bin/doctor` detects the state
+  that calls for it. Nothing on this machine is at risk either way.
 - Two of the four remaining plugins are pinned to a **moving** major alias
-  (`halostatue/fish-macos`, `halostatue/fish-utils-core`), so the same
-  commit can materialise different plugin code on different days. This is a
-  deliberate loosening, recorded rather than resolved: the pair is referenced by
-  nothing in the tracked set and unused in 14 months, so the exposure is bounded.
-  Exact pins (`.3.0`, `.3.0`) are a one-line change if that stops being
-  acceptable.
+  (`halostatue/fish-macos`, `halostatue/fish-utils-core`), so the same commit
+  can materialise different plugin code on different days. This is a deliberate
+  loosening, recorded rather than resolved: the pair is referenced by nothing in
+  the tracked set and unused in 14 months, so the exposure is bounded. Exact
+  pins (`.3.0`, `.3.0`) are a one-line change if that stops being acceptable.
 
 `bin/install`'s merge path is no longer an open item — Phase 2 exercises it
 against deliberate drift before anything is pushed.

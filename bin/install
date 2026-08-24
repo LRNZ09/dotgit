@@ -1,9 +1,13 @@
 #!/bin/sh
 # consus/bin/install — point each tool's own default path at this clone.
 #
-#   $XDG_CONFIG_HOME/fish                    -> <repo>/fish   (symlink)
-#   $XDG_CONFIG_HOME/ghostty/config.ghostty                   (one-line include)
-#   $XDG_CONFIG_HOME/git                     -> <repo>/git    (symlink, last)
+#   $XDG_CONFIG_HOME/fish                    -> <repo>/configs/fish  (symlink)
+#   $XDG_CONFIG_HOME/ghostty/config.ghostty                  (one-line include)
+#   $XDG_CONFIG_HOME/git                     -> <repo>/configs/git   (symlink, last)
+#
+# The record lives under <repo>/configs/; the name on each side of the arrow is
+# the tool's own, so a path names the same thing to the CLI, to $XDG_CONFIG_HOME
+# and to the backup directory, and only the repo side carries the prefix.
 #
 # Nothing is ever deleted: every displaced path is MOVED into a timestamped
 # backup directory, and every move reverses by moving it back. Re-running is a
@@ -152,6 +156,7 @@ done
 unset CDPATH
 repo=$(cd -- "$(dirname -- "$0")/.." && pwd -P)
 config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+record="$repo/configs"
 [ -n "$backup_dir" ] || backup_dir="$HOME/Backups/consus-install-$(date +%Y%m%dT%H%M%S)"
 
 # lefthook backs the repo's own secret scanning. Checked up front so a missing
@@ -184,16 +189,17 @@ entries() {
 show_diff() {
 	d_rel="$1"
 	d_m="$2"
-	d_r="$repo/$1"
+	d_r="$record/$1"
+	d_repo_rel="configs/$1"
 
 	entries "$d_m" > "$d_machine"
 	entries "$d_r" > "$d_repo"
 
 	# check-ignore refuses paths outside the repository, so ask it from inside
 	# the repo with repo-relative paths, then strip the prefix back off.
-	sort -u "$d_machine" "$d_repo" | sed "s|^|$d_rel/|" > "$d_scratch"
+	sort -u "$d_machine" "$d_repo" | sed "s|^|$d_repo_rel/|" > "$d_scratch"
 	( cd -- "$repo" && git check-ignore --stdin < "$d_scratch" ) 2>/dev/null |
-		sed "s|^$d_rel/||" | sort > "$d_ignored" || true
+		sed "s|^$d_repo_rel/||" | sort > "$d_ignored" || true
 
 	comm -23 "$d_machine" "$d_ignored" > "$d_scratch"; cp -- "$d_scratch" "$d_machine"
 	comm -23 "$d_repo" "$d_ignored" > "$d_scratch"; cp -- "$d_scratch" "$d_repo"
@@ -240,13 +246,13 @@ declared_merge=0
 # backup directory.
 classify() {
 	c_rel="$1"
-	c_target="$repo/$1"
+	c_target="$record/$1"
 	c_path="$config_home/$1"
 	plan_result=''
 	slot_result=0
 
 	# Never link to something that is not in this clone: without this, a
-	# missing $repo/git would send the live global config to the backup and
+	# missing $record/git would send the live global config to the backup and
 	# leave a dangling link in its place, with git silently unconfigured.
 	if [ ! -d "$c_target" ]; then
 		echo "✖ $c_rel: the record is missing — $c_target is not in this clone" >&2
@@ -369,7 +375,7 @@ classify() {
 # and any file already there is backed up rather than overwritten in place.
 classify_stub() {
 	s_path="$config_home/ghostty/config.ghostty"
-	s_line="config-file = $repo/ghostty/config.ghostty"
+	s_line="config-file = $record/ghostty/config.ghostty"
 	plan_result=''
 	slot_result=0
 
@@ -390,6 +396,7 @@ classify_stub() {
 
 echo "consus install"
 echo "  repo:        $repo"
+echo "  record:      $record"
 echo "  config home: $config_home"
 echo "  backups:     $backup_dir (created only if something is displaced)"
 [ -z "$resolutions" ] || echo "  resolutions:$resolutions"
@@ -457,7 +464,7 @@ move_aside() {
 apply_path() {
 	p_rel="$1"
 	p_plan="$2"
-	p_target="$repo/$1"
+	p_target="$record/$1"
 	p_path="$config_home/$1"
 
 	case "$p_plan" in
@@ -497,7 +504,7 @@ apply_path() {
 apply_path fish "$plan_fish"
 
 s_path="$config_home/ghostty/config.ghostty"
-s_line="config-file = $repo/ghostty/config.ghostty"
+s_line="config-file = $record/ghostty/config.ghostty"
 case "$plan_stub" in
 ok) ;;
 rewrite | write)

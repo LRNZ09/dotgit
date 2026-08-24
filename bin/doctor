@@ -11,7 +11,8 @@ set -eu
 unset CDPATH
 repo=$(cd -- "$(dirname -- "$0")/.." && pwd -P)
 config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
-fish_dir="$repo/fish"
+record="$repo/configs"
+fish_dir="$record/fish"
 failed=0
 fish_link_ok=0
 
@@ -20,13 +21,14 @@ trap 'rm -f "$present" "$classified" "$unclassified"' EXIT
 
 echo "consus doctor"
 echo "  repo:        $repo"
+echo "  record:      $record"
 echo "  config home: $config_home"
 echo
 
 # --- the two links ----------------------------------------------------------
 # check_link <rel> — returns non-zero when the link is missing or wrong.
 check_link() {
-	c_target="$repo/$1"
+	c_target="$record/$1"
 	c_path="$config_home/$1"
 	if [ ! -L "$c_path" ]; then
 		echo "✖ $c_path is not a symlink (expected -> $c_target)" >&2
@@ -48,7 +50,7 @@ if check_link fish; then fish_link_ok=1; else failed=1; fi
 # names a missing target, but 0 when the stub is absent altogether — ghostty
 # falls back to Application Support and reports success.
 stub="$config_home/ghostty/config.ghostty"
-want="config-file = $repo/ghostty/config.ghostty"
+want="config-file = $record/ghostty/config.ghostty"
 if [ ! -f "$stub" ]; then
 	echo "✖ $stub is missing — ghostty falls back to Application Support in silence" >&2
 	failed=1
@@ -107,7 +109,7 @@ else
 			echo "✖ declared but not installed: $missing — run: fisher update (needs network)" >&2
 			failed=1
 		else
-			echo "✓ plugins    every plugin in fish/fish_plugins is installed"
+			echo "✓ plugins    every plugin in configs/fish/fish_plugins is installed"
 		fi
 
 		# Unclassified entries. The allow-list hides a new hand-written file from
@@ -116,7 +118,7 @@ else
 		( cd -- "$fish_dir" && find . -name .git -prune -o ! -type d -print ) |
 			sed 's|^\./||' | sort > "$present"
 		{
-			git -C "$repo" ls-files fish | sed 's|^fish/||'
+			git -C "$repo" ls-files configs/fish | sed 's|^configs/fish/||'
 			# Fisher records its paths with a literal ~/.config/fish/ prefix, so
 			# strip that (and the real forms) or nothing ever matches.
 			fish -c 'for v in (set --names | string match "_fisher_*_files"); string join \n -- $$v; end' 2>/dev/null |
@@ -143,9 +145,9 @@ else
 		comm -23 "$present" "$classified" > "$unclassified"
 		count=$(wc -l < "$unclassified" | tr -d ' ')
 		if [ "$count" -eq 0 ]; then
-			echo "✓ fish       every entry under fish/ is accounted for"
+			echo "✓ fish       every entry under configs/fish/ is accounted for"
 		else
-			echo "· fish       $count unclassified under fish/ — hand-written and hidden by"
+			echo "· fish       $count unclassified under configs/fish/ — hand-written and hidden by"
 			echo "·            the allow-list, or output from a tool nobody classified:"
 			sed 's|^|·              |' "$unclassified"
 			echo "·            Add a .gitignore negation for anything that belongs in the"

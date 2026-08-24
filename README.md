@@ -1,27 +1,29 @@
 # consus
 
-The configuration this machine's tools actually read. Each tool finds it at its
-own default path, which is a symlink into this repo:
+The configuration this machine's tools actually read. It lives under `configs/`,
+one directory per tool, and each tool finds it at its own default path, which is
+a symlink into this repo:
 
 ```text
-~/.config/git   →  <this clone>/git
-~/.config/fish  →  <this clone>/fish
+~/.config/git   →  <this clone>/configs/git
+~/.config/fish  →  <this clone>/configs/fish
 ```
 
 Ghostty is the exception. Its winning config path on macOS is
 `~/Library/Application Support/com.mitchellh.ghostty/config`, which no symlink
 under `~/.config` can outrank, so it gets a one-line `config-file` include at
-`~/.config/ghostty/config.ghostty` instead — written by `bin/install`.
+`~/.config/ghostty/config.ghostty`, naming `configs/ghostty/config.ghostty`
+here — written by `bin/install`.
 
 ## What is here
 
-- **git** — the global config, its two per-machine examples, and `ignore`,
-  which is git's own default global excludes path.
-- **fish** — the hand-written configuration only: `config.fish`,
+- **configs/git** — the global config, its two per-machine examples, and
+  `ignore`, which is git's own default global excludes path.
+- **configs/fish** — the hand-written configuration only: `config.fish`,
   `fish_plugins`, three files under `conf.d/` and one function. Everything
   fisher or a tool generated is ignored on purpose — `fish_plugins` is the
   record, and those 82 plugin files are its build output.
-- **ghostty** — four settings, plus an optional per-machine include.
+- **configs/ghostty** — four settings, plus an optional per-machine include.
 
 Deliberately not managed: **zed**, whose settings-sync extensions are in flight
 and would compete with anything versioned here; **opencode**, which has no
@@ -63,16 +65,21 @@ be typed at the prompt or declared with
 `--resolve <fish|git>=<overwrite|merge|refuse>`; with neither, and no TTY, it
 prints the diff and refuses.
 
+Each path is named by the tool that owns it — `fish`, `git` — on the command
+line, under `~/.config` and in the backup directory alike. Only the repo side
+carries the `configs/` prefix.
+
 ## Per-machine settings
 
-- **git** — `git/config-local`, untracked and included last, so it wins. Copy
-  it from `git/config-local.example`. Work identity goes in `git/config-work`,
-  which loads only inside `~/Developer/work/`; for that to match, that
-  directory must be real all the way down and work repos must physically live
-  inside it.
+- **git** — `configs/git/config-local`, untracked and included last, so it wins.
+  Copy it from `configs/git/config-local.example`. Work identity goes in
+  `configs/git/config-work`, which loads only inside `~/Developer/work/`; for
+  that to match, that directory must be real all the way down and work repos
+  must physically live inside it.
 - **fish** — any new `conf.d/*.fish` file is machine-local by default: the
-  allow-list in `.gitignore` ignores everything under `fish/` it does not name.
-  `bin/doctor` reports such a file, which is the only way it becomes visible.
+  allow-list in `.gitignore` ignores everything under `configs/fish/` it does
+  not name. `bin/doctor` reports such a file, which is the only way it becomes
+  visible.
 - **ghostty** — `~/.config/ghostty/local.ghostty`. The repo's config ends with
   an optional include of it, so a machine without one loads nothing and says
   nothing.
@@ -82,8 +89,8 @@ prints the diff and refuses.
 `~/.config/git` and `~/.config/fish` are symlinks **into this repo**, so
 anything that writes through them writes here. In particular,
 `rm -rf ~/.config/fish/` — with the trailing slash — follows the link and
-empties this repo's `fish/` directory. `git restore` brings back the six tracked
-files; the other 91 need `fisher update` (which needs network), a tool
+empties this repo's `configs/fish/` directory. `git restore` brings back the six
+tracked files; the other 91 need `fisher update` (which needs network), a tool
 regenerating its own completions, or OrbStack running again.
 
 `bin/doctor` exists because link integrity is the one invariant git cannot
